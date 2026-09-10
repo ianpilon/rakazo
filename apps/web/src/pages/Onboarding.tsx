@@ -172,6 +172,8 @@ export function OnboardingPage() {
   const isOpenAiCompatible = provider === OPENAI_COMPATIBLE_PROVIDER_ID;
   const subscriptionSignIn = selected?.signIn !== undefined;
   const acceptsKey = selected?.auth !== "oauth";
+  // Deployment-local models (RAKAZO_LOCAL_MODELS) need no API key.
+  const isLocalProvider = provider === "local";
   const signInLabel = selected?.oauthLabel ?? t`Sign in`;
   const openAiCompatibleReady = openAiCompatibleConnectReady({
     baseUrl,
@@ -182,7 +184,9 @@ export function OnboardingPage() {
     selected &&
       modelId.trim() &&
       !oauthPending &&
-      (isOpenAiCompatible ? openAiCompatibleReady : acceptsKey && apiKey.trim()),
+      (isOpenAiCompatible
+        ? openAiCompatibleReady
+        : isLocalProvider || (acceptsKey && apiKey.trim())),
   );
   const otherModelLabel = t`Other model…`;
   // Base UI Select.Value only resolves labels when Root gets `items`.
