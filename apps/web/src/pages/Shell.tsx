@@ -93,6 +93,7 @@ import {
   Mic,
   Monitor,
   MoreHorizontal,
+  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
   Paperclip,
@@ -213,6 +214,7 @@ import {
   DeleteBotDialog,
   DeleteItemDialog,
   NewBotSectionDialog,
+  RenameSectionDialog,
   NewSpaceDialog,
   PickerInfoDialog,
 } from "./shell/dialogs";
@@ -494,6 +496,16 @@ export function ShellPage() {
     spaceMenuAnchor.current = null;
   }, [spaceMenu]);
   const closeSpaceMenu = useCallback(() => setSpaceMenu(null), []);
+  const [sectionMenu, setSectionMenu] = useState<{
+    id: string;
+    name: string;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [renameSectionTarget, setRenameSectionTarget] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  /** Sidebar group keys look like `section:<id>` (optionally prefixed with the space). */
+  const sectionIdFromKey = (key: string) => /(?:^|:)section:([^:]+)$/.exec(key)?.[1] ?? null;
   const [clearTarget, setClearTarget] = useState<
     { kind: "bot"; chat: Bot } | { kind: "group"; chat: Group } | null
   >(null);
@@ -2618,7 +2630,16 @@ export function ShellPage() {
                                     position: { x: event.clientX, y: event.clientY },
                                   });
                                 }
-                              : undefined
+                              : sectionIdFromKey(group.key)
+                                ? (event) => {
+                                    event.preventDefault();
+                                    setSectionMenu({
+                                      id: sectionIdFromKey(group.key)!,
+                                      name: group.title ?? "",
+                                      position: { x: event.clientX, y: event.clientY },
+                                    });
+                                  }
+                                : undefined
                           }
                           aria-expanded={group.emptySpaceId ? undefined : !collapsed}
                           aria-label={
@@ -2648,6 +2669,22 @@ export function ShellPage() {
                             />
                           )}
                         </button>
+                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
+                          <button
+                            type="button"
+                            aria-label={t`Rename ${group.title}`}
+                            className="mr-1 rounded-md p-1 text-muted-foreground/70 transition hover:bg-sidebar-accent hover:text-foreground focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:[div:hover>&]:opacity-100"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setRenameSectionTarget({
+                                id: sectionIdFromKey(group.key)!,
+                                name: group.title ?? "",
+                              });
+                            }}
+                          >
+                            <Pencil size={13} aria-hidden="true" />
+                          </button>
+                        ) : null}
                         {group.canDeleteSpace ? (
                           <Button
                             variant="ghost"
@@ -3741,6 +3778,61 @@ export function ShellPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        ) : null}
+
+        {sectionMenu ? (
+          <DropdownMenu
+            open
+            onOpenChange={(open) => {
+              if (!open) setSectionMenu(null);
+            }}
+          >
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-hidden
+                  className="fixed size-0 p-0 opacity-0"
+                  style={{ left: sectionMenu.position.x, top: sectionMenu.position.y }}
+                />
+              }
+            />
+            <DropdownMenuContent
+              aria-label={t`Actions for section`}
+              align="start"
+              sideOffset={0}
+              className="w-[220px]"
+            >
+              <DropdownMenuItem
+                onClick={() => {
+                  setRenameSectionTarget({ id: sectionMenu.id, name: sectionMenu.name });
+                  setSectionMenu(null);
+                }}
+              >
+                <Pencil />
+                {t`Rename section`}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
+        {renameSectionTarget ? (
+          <RenameSectionDialog
+            section={renameSectionTarget}
+            onCancel={() => setRenameSectionTarget(null)}
+            onConfirm={async (name) => {
+              const updated = await rpc.botSections.rename({
+                sectionId: renameSectionTarget.id,
+                name,
+              });
+              setBotSections((current) =>
+                current.map((section) => (section.id === updated.id ? updated : section)),
+              );
+              setRenameSectionTarget(null);
+              await refreshBots();
+            }}
+          />
         ) : null}
 
         {deleteTarget ? (

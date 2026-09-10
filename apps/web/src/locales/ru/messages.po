@@ -3726,3 +3726,19 @@ msgstr "Ваше имя"
 #: src/pages/Welcome.tsx:21
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "Ваша команда постоянно работающих агентов<0/>, которым вы можете дать настоящую работу."
+
+#: src/pages/Shell.tsx
+msgid "Rename section"
+msgstr "Rename section"
+
+#: src/pages/Shell.tsx
+msgid "Could not rename section"
+msgstr "Could not rename section"
+
+#: src/pages/Shell.tsx
+msgid "Rename {0}"
+msgstr "Rename {0}"
+
+#: src/pages/Shell.tsx
+msgid "Actions for section"
+msgstr "Actions for section"

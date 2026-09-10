@@ -208,6 +208,69 @@ export function NewBotSectionDialog({
   );
 }
 
+export function RenameSectionDialog({
+  section,
+  onCancel,
+  onConfirm,
+}: {
+  section: { id: string; name: string };
+  onCancel: () => void;
+  onConfirm: (name: string) => Promise<void>;
+}) {
+  const { t } = useLingui();
+  const nameId = useId();
+  const [name, setName] = useState(section.name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <Dialog open onOpenChange={closeUnlessBusy(saving, onCancel)}>
+      <DialogContent showCloseButton={false}>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const trimmed = name.trim();
+            if (!trimmed || saving) return;
+            setSaving(true);
+            setError(null);
+            void onConfirm(trimmed).catch((err: unknown) => {
+              setError(err instanceof Error ? err.message : t`Could not rename section`);
+              setSaving(false);
+            });
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              <Trans>Rename section</Trans>
+            </DialogTitle>
+          </DialogHeader>
+          <label htmlFor={nameId} className="block text-[13.5px] text-foreground/75">
+            <Trans>Name</Trans>
+            <Input
+              id={nameId}
+              maxLength={60}
+              value={name}
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+              className="mt-2"
+            />
+          </label>
+          {error ? <p className="text-[13.5px] text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
+              <Trans>Cancel</Trans>
+            </Button>
+            <Button type="submit" disabled={saving || !name.trim() || name.trim() === section.name}>
+              {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ClearConversationDialog({
   bot,
   onCancel,
