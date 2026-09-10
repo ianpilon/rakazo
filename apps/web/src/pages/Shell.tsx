@@ -2731,7 +2731,7 @@ export function ShellPage() {
                               position: { x: event.clientX, y: event.clientY },
                             });
                           }}
-                          className={`flex w-full gap-3 rounded-xl px-2.5 py-[11px] text-start ${
+                          className={`group flex w-full gap-3 rounded-xl px-2.5 py-[11px] text-start ${
                             item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
                           } ${
                             (item.kind === "bot" && !inGroup && active?.id === item.chat.id) ||
@@ -2786,6 +2786,40 @@ export function ShellPage() {
                                     aria-hidden="true"
                                     className="inline-block h-2 w-2 rounded-full bg-foreground"
                                   />
+                                ) : null}
+                                {item.chat.spaceId === bootstrapMe?.spaceId ? (
+                                  // Visible entry point to the same menu right-click opens; always
+                                  // shown on touch screens, hover-revealed with a pointer.
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={t`Actions for ${item.chat.name}`}
+                                    className="-my-1 rounded-md p-1 text-muted-foreground/70 transition hover:bg-sidebar-accent hover:text-foreground focus:opacity-100 focus:outline-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      botMenuAnchor.current = event.currentTarget.closest("button");
+                                      setBotMenu({
+                                        kind: item.kind,
+                                        id: item.chat.id,
+                                        position: { x: event.clientX, y: event.clientY },
+                                      });
+                                    }}
+                                    onKeyDown={(event) => {
+                                      if (event.key !== "Enter" && event.key !== " ") return;
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      botMenuAnchor.current = event.currentTarget.closest("button");
+                                      setBotMenu({
+                                        kind: item.kind,
+                                        id: item.chat.id,
+                                        position: { x: rect.left, y: rect.bottom },
+                                      });
+                                    }}
+                                  >
+                                    <MoreHorizontal size={15} aria-hidden="true" />
+                                  </span>
                                 ) : null}
                               </span>
                             </div>
