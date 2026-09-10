@@ -1,4 +1,6 @@
-export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** Per-attachment cap. Bytes travel base64-encoded inside the RPC body; keep MAX_RPC_REQUEST_BYTES above 4/3 of this times ATTACHMENT_MAX_COUNT. */
+export const ATTACHMENT_MAX_MIB = 100;
+export const ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_MIB * 1024 * 1024;
 export const ATTACHMENT_MAX_COUNT = 4;
 /** Base64 expands payload by 4/3; cap before decode to reject oversize uploads cheaply. */
 export const ATTACHMENT_MAX_BASE64_LENGTH = Math.ceil(ATTACHMENT_MAX_BYTES / 3) * 4;

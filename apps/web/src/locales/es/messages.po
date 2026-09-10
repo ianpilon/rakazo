@@ -29,7 +29,7 @@ msgstr "{0} (máx. {ATTACHMENT_MAX_COUNT} archivos adjuntos)"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx:1836
-msgid "{0} (over 10 MiB)"
+msgid "{0} (over 100 MiB)"
 msgstr "{0} (más de 10 MiB)"
 
 #. placeholder {0}: preset.n

@@ -1,6 +1,7 @@
 import {
   ATTACHMENT_MAX_BASE64_LENGTH,
   ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_MAX_MIB,
   type AttachmentMimeType,
   isAllowedAttachmentMimeType,
   isAttachmentImageMimeType,
@@ -18,7 +19,7 @@ export function decodeAttachmentBase64(contentBase64: string): Uint8Array {
   const normalized = contentBase64.trim();
   if (!normalized) throw new AttachmentValidationError("Attachment content is empty");
   if (normalized.length > ATTACHMENT_MAX_BASE64_LENGTH) {
-    throw new AttachmentValidationError("Attachment exceeds the 10 MiB limit");
+    throw new AttachmentValidationError(`Attachment exceeds the ${ATTACHMENT_MAX_MIB} MiB limit`);
   }
   if (
     normalized.length % 4 !== 0 ||
@@ -34,7 +35,7 @@ export function decodeAttachmentBase64(contentBase64: string): Uint8Array {
   }
   if (bytes.byteLength === 0) throw new AttachmentValidationError("Attachment content is empty");
   if (bytes.byteLength > ATTACHMENT_MAX_BYTES) {
-    throw new AttachmentValidationError("Attachment exceeds the 10 MiB limit");
+    throw new AttachmentValidationError(`Attachment exceeds the ${ATTACHMENT_MAX_MIB} MiB limit`);
   }
   return new Uint8Array(bytes);
 }

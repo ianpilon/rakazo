@@ -1862,7 +1862,7 @@ export function ShellPage() {
           continue;
         }
         if (file.size > ATTACHMENT_MAX_BYTES) {
-          skipped.push(t`${file.name} (over 10 MiB)`);
+          skipped.push(t`${file.name} (over 100 MiB)`);
           continue;
         }
         const mimeType = inferAttachmentMimeType(file.name, file.type);

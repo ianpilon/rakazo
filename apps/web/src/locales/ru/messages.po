@@ -29,7 +29,7 @@ msgstr "{0} (макс. {ATTACHMENT_MAX_COUNT} вложений)"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx:1836
-msgid "{0} (over 10 MiB)"
+msgid "{0} (over 100 MiB)"
 msgstr "{0} (более 10 МБ)"
 
 #. placeholder {0}: preset.n

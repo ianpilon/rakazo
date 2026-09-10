@@ -3,7 +3,8 @@ import type { Hono, MiddlewareHandler } from "hono";
 import { cancelBody } from "./http-body.js";
 
 export const MAX_AUTH_REQUEST_BYTES = 64 * 1024;
-export const MAX_RPC_REQUEST_BYTES = 16 * 1024 * 1024;
+// Attachments ride inside RPC bodies as base64 (4/3 overhead), up to ATTACHMENT_MAX_COUNT per message.
+export const MAX_RPC_REQUEST_BYTES = 600 * 1024 * 1024;
 
 /** Bound JSON entry points before their framework parsers buffer the request. */
 export function requestBodyLimit(maxSize: number): MiddlewareHandler {

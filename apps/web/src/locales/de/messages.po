@@ -29,8 +29,8 @@ msgstr "{0} (maximal {ATTACHMENT_MAX_COUNT} Anhänge)"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx:1836
-msgid "{0} (over 10 MiB)"
-msgstr "{0} (über 10 MiB)"
+msgid "{0} (over 100 MiB)"
+msgstr "{0} (über 100 MiB)"
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx:136
