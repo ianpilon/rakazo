@@ -21,9 +21,13 @@ export function decodeAttachmentBase64(contentBase64: string): Uint8Array {
   if (normalized.length > ATTACHMENT_MAX_BASE64_LENGTH) {
     throw new AttachmentValidationError(`Attachment exceeds the ${ATTACHMENT_MAX_MIB} MiB limit`);
   }
+  // Linear checks only: a grouped-repetition regex recursed per 4-char group and
+  // overflowed the call stack on multi-megabyte payloads.
+  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
   if (
     normalized.length % 4 !== 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) ||
+    normalized.indexOf("=") !== (padding ? normalized.length - padding : -1)
   ) {
     throw new AttachmentValidationError("Attachment content is not valid base64");
   }
