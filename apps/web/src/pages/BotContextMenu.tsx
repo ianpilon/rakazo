@@ -120,7 +120,7 @@ export function BotContextMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Pencil />
-          {t`Edit Profile`}
+          {t`Edit Bot Settings`}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onDuplicate}>
           <Copy />

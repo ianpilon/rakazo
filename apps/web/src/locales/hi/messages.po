@@ -1631,7 +1631,7 @@ msgid "Edit first"
 msgstr "पहले संपादित करें"
 
 #: src/pages/BotContextMenu.tsx:123
-msgid "Edit Profile"
+msgid "Edit Bot Settings"
 msgstr "प्रोफ़ाइल संपादित करें"
 
 #: src/pages/Auth.tsx:149

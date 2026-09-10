@@ -1631,7 +1631,7 @@ msgid "Edit first"
 msgstr "수정 후 보내기"
 
 #: src/pages/BotContextMenu.tsx:123
-msgid "Edit Profile"
+msgid "Edit Bot Settings"
 msgstr "Bot 정보 수정"
 
 #: src/pages/Auth.tsx:149

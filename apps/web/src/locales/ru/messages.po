@@ -1630,7 +1630,7 @@ msgid "Edit first"
 msgstr "Сначала отредактируйте"
 
 #: src/pages/BotContextMenu.tsx:123
-msgid "Edit Profile"
+msgid "Edit Bot Settings"
 msgstr "Редактировать профиль"
 
 #: src/pages/Auth.tsx:149
