@@ -30,7 +30,7 @@ msgstr "{0} (en fazla {ATTACHMENT_MAX_COUNT} ek)"
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx:1836
 msgid "{0} (over 100 MiB)"
-msgstr "{0} (10 MiB üzeri)"
+msgstr "{0} (100 MiB üzeri)"
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx:136

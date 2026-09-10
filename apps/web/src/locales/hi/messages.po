@@ -30,7 +30,7 @@ msgstr "{0} (अधिकतम {ATTACHMENT_MAX_COUNT} अटैचमेंट)
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx:1836
 msgid "{0} (over 100 MiB)"
-msgstr "{0} (10 MiB से अधिक)"
+msgstr "{0} (100 MiB से अधिक)"
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx:136
