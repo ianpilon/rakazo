@@ -225,6 +225,22 @@ import {
 } from "./shell/message-cards";
 import { WindowChrome } from "./WindowChrome";
 
+/** Sidebar previews are plain text; strip the markdown markers the model writes. */
+function plainPreview(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(^|\s)[*_](\S[^*_]*?)[*_](?=\s|$|[.,!?;:])/g, "$1$2")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const BotContextMenu = lazy(() =>
   import("./BotContextMenu").then((module) => ({ default: module.BotContextMenu })),
 );
@@ -2840,7 +2856,7 @@ export function ShellPage() {
                                     dir="auto"
                                     className="truncate text-[12.5px] text-muted-foreground/80"
                                   >
-                                    {item.chat.preview}
+                                    {plainPreview(item.chat.preview)}
                                   </div>
                                 ) : null}
                               </>
@@ -2854,8 +2870,8 @@ export function ShellPage() {
                                 }`}
                               >
                                 {item.kind === "bot"
-                                  ? item.chat.preview
-                                  : item.chat.preview ||
+                                  ? plainPreview(item.chat.preview)
+                                  : plainPreview(item.chat.preview) ||
                                     item.chat.members.map((member) => member.name).join(", ")}
                               </div>
                             )}
