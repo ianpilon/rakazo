@@ -16,6 +16,7 @@ model User {
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
   avatarStyle                 String                       @default("robot")
+  unassignedSectionLabel      String?
   sessions                    Session[]
   accounts                    Account[]
   members                     Member[]

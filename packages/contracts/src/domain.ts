@@ -1121,6 +1121,8 @@ export const MeSchema = z.object({
   canChooseHostComputer: z.boolean(),
   sandboxProvider: z.string(),
   avatarStyle: AvatarStyleSchema,
+  /** Custom sidebar name for the built-in "Unassigned" bucket; null means the default. */
+  unassignedSectionLabel: z.string().nullable(),
 });
 export type Me = z.infer<typeof MeSchema>;
 

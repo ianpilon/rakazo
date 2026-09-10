@@ -506,6 +506,9 @@ export function ShellPage() {
   );
   /** Sidebar group keys look like `section:<id>` (optionally prefixed with the space). */
   const sectionIdFromKey = (key: string) => /(?:^|:)section:([^:]+)$/.exec(key)?.[1] ?? null;
+  /** The built-in bucket for bots outside any section; renamed via a user preference. */
+  const isUnassignedKey = (key: string) => key === "unassigned" || key.endsWith(":unassigned");
+  const UNASSIGNED_RENAME_ID = "unassigned";
   const [clearTarget, setClearTarget] = useState<
     { kind: "bot"; chat: Bot } | { kind: "group"; chat: Group } | null
   >(null);
@@ -1352,6 +1355,7 @@ export function ShellPage() {
           ...visibleGroups.map((chat) => ({ kind: "group" as const, chat })),
         ].map((item) => ({ ...item, pinned: item.chat.pinned, sectionId: item.chat.sectionId })),
         space.botSections,
+        { unassignedLabel: bootstrapMe?.unassignedSectionLabel },
       ).map((group, index) => ({
         ...group,
         key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
@@ -2630,11 +2634,11 @@ export function ShellPage() {
                                     position: { x: event.clientX, y: event.clientY },
                                   });
                                 }
-                              : sectionIdFromKey(group.key)
+                              : sectionIdFromKey(group.key) || isUnassignedKey(group.key)
                                 ? (event) => {
                                     event.preventDefault();
                                     setSectionMenu({
-                                      id: sectionIdFromKey(group.key)!,
+                                      id: sectionIdFromKey(group.key) ?? UNASSIGNED_RENAME_ID,
                                       name: group.title ?? "",
                                       position: { x: event.clientX, y: event.clientY },
                                     });
@@ -2669,7 +2673,8 @@ export function ShellPage() {
                             />
                           )}
                         </button>
-                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
+                        {(sectionIdFromKey(group.key) || isUnassignedKey(group.key)) &&
+                        !group.emptySpaceId ? (
                           <button
                             type="button"
                             aria-label={t`Rename ${group.title}`}
@@ -2677,7 +2682,7 @@ export function ShellPage() {
                             onClick={(event) => {
                               event.stopPropagation();
                               setRenameSectionTarget({
-                                id: sectionIdFromKey(group.key)!,
+                                id: sectionIdFromKey(group.key) ?? UNASSIGNED_RENAME_ID,
                                 name: group.title ?? "",
                               });
                             }}
@@ -3822,6 +3827,12 @@ export function ShellPage() {
             section={renameSectionTarget}
             onCancel={() => setRenameSectionTarget(null)}
             onConfirm={async (name) => {
+              if (renameSectionTarget.id === UNASSIGNED_RENAME_ID) {
+                const nextMe = await rpc.preferences.update({ unassignedSectionLabel: name });
+                setBootstrapMe(nextMe);
+                setRenameSectionTarget(null);
+                return;
+              }
               const updated = await rpc.botSections.rename({
                 sectionId: renameSectionTarget.id,
                 name,

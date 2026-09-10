@@ -10,7 +10,9 @@ type SectionedBot = { pinned: boolean; sectionId: string | null };
 export function groupBotsForSidebar<T extends SectionedBot>(
   bots: readonly T[],
   sections: readonly Section[],
+  options: { unassignedLabel?: string | null } = {},
 ): BotListSection<T>[] {
+  const unassignedLabel = options.unassignedLabel?.trim() || "Unassigned";
   const knownSectionIds = new Set(sections.map((section) => section.id));
   const pinned: T[] = [];
   const sectionMembers = new Map<string, T[]>();
@@ -41,7 +43,7 @@ export function groupBotsForSidebar<T extends SectionedBot>(
   if (unassigned.length > 0) {
     grouped.push({
       key: "unassigned",
-      title: pinned.length > 0 || sections.length > 0 ? "Unassigned" : null,
+      title: pinned.length > 0 || sections.length > 0 ? unassignedLabel : null,
       bots: unassigned,
     });
   }

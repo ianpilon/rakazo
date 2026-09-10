@@ -137,7 +137,14 @@ export const appContract = {
   health: oc.output(z.object({ ok: z.literal(true), version: z.string() })),
   me: oc.output(MeSchema),
   preferences: {
-    update: oc.input(z.object({ avatarStyle: AvatarStyleSchema })).output(MeSchema),
+    update: oc
+      .input(
+        z.object({
+          avatarStyle: AvatarStyleSchema.optional(),
+          unassignedSectionLabel: z.string().trim().max(60).nullable().optional(),
+        }),
+      )
+      .output(MeSchema),
   },
   spaces: {
     list: oc.output(SpaceNavigationSchema),
