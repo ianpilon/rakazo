@@ -123,7 +123,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -314,6 +314,7 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId, sectionId } = useParams();
+  const sectionView = useLocation().pathname.endsWith("/board") ? "board" : "goal";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // Mirrors searchParams for effects that only need to read it once on run,
@@ -3252,6 +3253,14 @@ export function ShellPage() {
                 current.map((section) => (section.id === updated.id ? updated : section)),
               );
             }}
+            view={sectionView}
+            onChangeView={(view) =>
+              navigate(
+                view === "board"
+                  ? `/app/s/${activeSection.id}/board`
+                  : `/app/s/${activeSection.id}`,
+              )
+            }
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">

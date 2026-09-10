@@ -358,6 +358,17 @@ describeJourneys("required product journeys", () => {
     expect(
       (await rpc<Bot[]>(app, ada, "bots/list")).find((bot) => bot.id === chief.id)?.unread,
     ).toBe(true);
+    const board = await rpc<{
+      runs: Array<{ botId: string; status: string; toolCalls: unknown[]; promptSnippet: string }>;
+      scratchpad: unknown[];
+      routines: unknown[];
+    }>(app, ada, "botSections/board", { sectionId: section.id });
+    expect(board.runs.some((run) => run.botId === chief.id && run.status === "completed")).toBe(
+      true,
+    );
+    expect(board.runs.every((run) => Array.isArray(run.toolCalls))).toBe(true);
+    const foreignBoard = await raw(app, bob, "botSections/board", { sectionId: section.id });
+    expect(foreignBoard.status).toBeGreaterThanOrEqual(400);
     await rpc(app, ada, "threads/markRead", { botId: chief.id });
     expect(
       (await rpc<Bot[]>(app, ada, "bots/list")).find((bot) => bot.id === chief.id)?.unread,

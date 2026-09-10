@@ -161,6 +161,7 @@ import {
 import { listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
 import { querySpaceSearch } from "./search.js";
+import { loadSectionBoard } from "./section-board.js";
 import { withSerializableRetry } from "./serializable-retry.js";
 import {
   applyServerUpdate,
@@ -1342,6 +1343,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       update: authed.botSections.update.handler(async ({ context, input }) =>
         repos.updateBotSection(context.actor, input),
+      ),
+      board: authed.botSections.board.handler(async ({ context, input }) =>
+        loadSectionBoard(deps.prisma, context.actor, input.sectionId),
       ),
     },
     threads: {
@@ -5092,10 +5096,14 @@ async function persistModelCredential(
         // fail with "Unknown model local/null". Local providers fall back to the
         // first deployment-local model; other providers to the deployment default.
         const requestedModel = input.modelId?.trim();
-        const junkModel = !requestedModel || requestedModel === "null" || requestedModel === "undefined";
+        const junkModel =
+          !requestedModel || requestedModel === "null" || requestedModel === "undefined";
         const localFallback =
           input.provider === "local"
-            ? (process.env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((id) => id.trim()).find(Boolean)
+            ? (process.env.RAKAZO_LOCAL_MODELS ?? "")
+                .split(",")
+                .map((id) => id.trim())
+                .find(Boolean)
             : undefined;
         const defaultModel = junkModel ? (localFallback ?? deps.env.defaultModel) : requestedModel;
         await selectSpaceModelPreference(tx, actor, credential.id, defaultModel);

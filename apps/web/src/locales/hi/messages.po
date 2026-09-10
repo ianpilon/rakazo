@@ -3759,3 +3759,27 @@ msgstr "Goal"
 #: src/pages/SectionOverview.tsx
 msgid "Could not save goal"
 msgstr "Could not save goal"
+
+#: src/pages/SectionBoard.tsx
+msgid "Board"
+msgstr "Board"
+
+#: src/pages/SectionBoard.tsx
+msgid "To do"
+msgstr "To do"
+
+#: src/pages/SectionBoard.tsx
+msgid "Doing"
+msgstr "Doing"
+
+#: src/pages/SectionBoard.tsx
+msgid "Waiting on you"
+msgstr "Waiting on you"
+
+#: src/pages/SectionBoard.tsx
+msgid "No tool calls"
+msgstr "No tool calls"
+
+#: src/pages/SectionBoard.tsx
+msgid "Open thread"
+msgstr "Open thread"
