@@ -72,7 +72,9 @@ function SessionApp() {
     <div className="h-full" data-rakazo-app-state="ready">
       <Suspense fallback={<div className="h-full bg-background" />}>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
+          {/* Single-owner instance: the front door is sign-in; the marketing welcome page lives at /welcome. */}
+          <Route path="/" element={user ? <Navigate to="/app" replace /> : <Navigate to="/sign-in" replace />} />
+          <Route path="/welcome" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
           <Route
             path="/sign-in"
             element={
