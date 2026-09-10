@@ -81,6 +81,8 @@ async function ensureFirstBot(): Promise<{ id: string }> {
   return firstBotEnsure;
 }
 
+const LOCAL_PROVIDER_PLACEHOLDER_KEY = "local-model-server";
+
 function providerLabel(entry: ModelCatalogEntry): string {
   return entry.provider === "openai-codex" ? "ChatGPT" : (entry.providerName ?? entry.provider);
 }
@@ -171,9 +173,9 @@ export function OnboardingPage() {
   const selected = modelsForProvider.find((entry) => entry.id === modelId) ?? modelsForProvider[0];
   const isOpenAiCompatible = provider === OPENAI_COMPATIBLE_PROVIDER_ID;
   const subscriptionSignIn = selected?.signIn !== undefined;
-  const acceptsKey = selected?.auth !== "oauth";
   // Deployment-local models (RAKAZO_LOCAL_MODELS) need no API key.
   const isLocalProvider = provider === "local";
+  const acceptsKey = selected?.auth !== "oauth" && !isLocalProvider;
   const signInLabel = selected?.oauthLabel ?? t`Sign in`;
   const openAiCompatibleReady = openAiCompatibleConnectReady({
     baseUrl,
@@ -274,6 +276,15 @@ export function OnboardingPage() {
           modelId: modelId.trim(),
           reasoning,
           apiKey: apiKey.trim() || undefined,
+          label: selected?.providerName ?? provider,
+        });
+      } else if (isLocalProvider) {
+        // Deployment-local models ignore the key at run time, but the connect
+        // schema requires one, so send a fixed placeholder.
+        await rpc.models.connect({
+          provider,
+          apiKey: LOCAL_PROVIDER_PLACEHOLDER_KEY,
+          modelId,
           label: selected?.providerName ?? provider,
         });
       } else if (apiKey) {
