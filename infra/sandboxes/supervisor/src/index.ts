@@ -100,9 +100,10 @@ const controlViaLoopback = process.env.SANDBOX_CONTROL_VIA_LOOPBACK === "true";
 const computerScreens = new Map<string, Map<string, ScreenAssignment>>();
 
 export const MAX_SUPERVISOR_REQUEST_BYTES = 1024 * 1024;
-export const MAX_SUPERVISOR_FILE_REQUEST_BYTES = 16 * 1024 * 1024 + 64 * 1024;
+// Fits one ATTACHMENT_MAX_BYTES (100 MiB) file as base64 JSON, plus headroom.
+export const MAX_SUPERVISOR_FILE_REQUEST_BYTES = 140 * 1024 * 1024;
 
-/** Keep normal control requests small while allowing the existing 16 MiB file payload. */
+/** Keep normal control requests small while allowing a full-size attachment file payload. */
 export function supervisorRequestBodyLimit(method: string, pathname: string): number {
   return method === "POST" && /^\/computers\/[^/]+\/files\/?$/.test(pathname)
     ? MAX_SUPERVISOR_FILE_REQUEST_BYTES
