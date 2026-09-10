@@ -41,6 +41,7 @@ import {
   type PiSessionHandle,
   type PiSessionRecorder,
 } from "./pi-session.js";
+import { pruneStaleToolResults } from "./tool-result-context.js";
 import { textContentArg } from "./tool-text.js";
 
 const running = new Map<string, { controller: AbortController; work: Promise<void> }>();
@@ -233,7 +234,8 @@ export class PiAgentRuntime implements AgentRuntime {
           streamFn: (m, ctx, options) =>
             models.streamSimple(m, ctx, reliableStreamOptions(m, options)),
           getApiKey: async () => apiKey,
-          transformContext: async (messages) => pruneComputerScreenshotContext(messages),
+          transformContext: async (messages) =>
+            pruneStaleToolResults(pruneComputerScreenshotContext(messages)),
           prepareNextTurnWithContext: async () => {
             if (!request.claimSteering) return undefined;
             const steering = await request.claimSteering([...seenSteeringIds]);
@@ -985,7 +987,8 @@ async function executeSubagent(host: ToolHost, executionId: string, args: Record
     streamFn: (m, ctx, options) =>
       selectedModel.models.streamSimple(m, ctx, reliableStreamOptions(m, options)),
     getApiKey: async () => selectedModel.apiKey,
-    transformContext: async (messages) => pruneComputerScreenshotContext(messages),
+    transformContext: async (messages) =>
+      pruneStaleToolResults(pruneComputerScreenshotContext(messages)),
     initialState: {
       systemPrompt: [
         `You are a Rakazo subagent named "${name}".`,
