@@ -726,8 +726,8 @@ msgid "Choose a new password"
 msgstr "Выберите новый пароль"
 
 #: src/pages/ModelSettingsOverlay.tsx:312
-msgid "Choose which connected model Rakazo uses."
-msgstr "Выберите, какую подключенную модель использует Rakazo."
+msgid "Choose which connected model Open Bot uses."
+msgstr "Выберите, какую подключенную модель использует Open Bot."
 
 #: src/pages/shell/dialogs.tsx:261
 msgid "Clear"
@@ -1396,8 +1396,8 @@ msgid "Create your first bot"
 msgstr "Создайте своего первого бота"
 
 #: src/pages/Auth.tsx:38
-msgid "Create your Rakazo"
-msgstr "Создайте свой Rakazo"
+msgid "Create your Open Bot"
+msgstr "Создайте свой Open Bot"
 
 #: src/components/AskCard.tsx:21
 msgid "Created"
@@ -2619,8 +2619,8 @@ msgstr "Вставьте запасной ключ"
 
 #: src/pages/ModelSettingsOverlay.tsx:432
 #: src/pages/Onboarding.tsx:406
-msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
-msgstr "Вставьте OpenAI-совместимый адрес со своего сервера. При необходимости Rakazo добавляет /v1."
+msgid "Paste the OpenAI-compatible address from your server. Open Bot adds /v1 if needed."
+msgstr "Вставьте OpenAI-совместимый адрес со своего сервера. При необходимости Open Bot добавляет /v1."
 
 #: src/pages/VoiceSettingsOverlay.tsx:231
 msgid "Paste your API key"
@@ -2906,8 +2906,8 @@ msgid "Retry screen"
 msgstr "Повторить загрузку экрана"
 
 #: src/pages/McpOAuthCallback.tsx:62
-msgid "Return to Rakazo"
-msgstr "Вернуться в Rakazo"
+msgid "Return to Open Bot"
+msgstr "Вернуться в Open Bot"
 
 #. placeholder {0}: doc.revision
 #: src/pages/KnowledgeSection.tsx:180
@@ -3202,8 +3202,8 @@ msgid "Sign in"
 msgstr "Войти"
 
 #: src/pages/Auth.tsx:36
-msgid "Sign in to Rakazo"
-msgstr "Войти в Rakazo"
+msgid "Sign in to Open Bot"
+msgstr "Войти в Open Bot"
 
 #: src/pages/Auth.tsx:223
 #: src/pages/Welcome.tsx:32
@@ -3467,8 +3467,8 @@ msgid "This server uses browser sign-in. Authorize it to let your agents use its
 msgstr "Этот сервер использует вход в браузер. Авторизуйте его, чтобы ваши агенты могли использовать его инструменты. Откроется всплывающее окно."
 
 #: src/pages/ModelSettingsOverlay.tsx:709
-msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
-msgstr "Вход по этой подписке пока недоступен в Rakazo. Используйте учетные данные развертывания или выберите другого поставщика."
+msgid "This subscription sign-in is not available in Open Bot yet. Use a deployment credential or choose another provider."
+msgstr "Вход по этой подписке пока недоступен в Open Bot. Используйте учетные данные развертывания или выберите другого поставщика."
 
 #: src/pages/RoutineSchedule.tsx:207
 msgid "Time of day"

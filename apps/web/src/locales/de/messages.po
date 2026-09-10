@@ -727,8 +727,8 @@ msgid "Choose a new password"
 msgstr "Wähle ein neues Passwort"
 
 #: src/pages/ModelSettingsOverlay.tsx:312
-msgid "Choose which connected model Rakazo uses."
-msgstr "Wähle das verbundene Modell aus, das Rakazo verwendet."
+msgid "Choose which connected model Open Bot uses."
+msgstr "Wähle das verbundene Modell aus, das Open Bot verwendet."
 
 #: src/pages/shell/dialogs.tsx:261
 msgid "Clear"
@@ -1397,8 +1397,8 @@ msgid "Create your first bot"
 msgstr "Ersten Bot erstellen"
 
 #: src/pages/Auth.tsx:38
-msgid "Create your Rakazo"
-msgstr "Dein Rakazo erstellen"
+msgid "Create your Open Bot"
+msgstr "Dein Open Bot erstellen"
 
 #: src/components/AskCard.tsx:21
 msgid "Created"
@@ -2628,8 +2628,8 @@ msgstr "Ersatzschlüssel einfügen"
 
 #: src/pages/ModelSettingsOverlay.tsx:432
 #: src/pages/Onboarding.tsx:406
-msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
-msgstr "Füge die OpenAI-kompatible Adresse deines Servers ein. Rakazo ergänzt /v1 bei Bedarf."
+msgid "Paste the OpenAI-compatible address from your server. Open Bot adds /v1 if needed."
+msgstr "Füge die OpenAI-kompatible Adresse deines Servers ein. Open Bot ergänzt /v1 bei Bedarf."
 
 #: src/pages/VoiceSettingsOverlay.tsx:231
 msgid "Paste your API key"
@@ -2915,8 +2915,8 @@ msgid "Retry screen"
 msgstr ""
 
 #: src/pages/McpOAuthCallback.tsx:62
-msgid "Return to Rakazo"
-msgstr "Zurück zu Rakazo"
+msgid "Return to Open Bot"
+msgstr "Zurück zu Open Bot"
 
 #. placeholder {0}: doc.revision
 #: src/pages/KnowledgeSection.tsx:180
@@ -3211,8 +3211,8 @@ msgid "Sign in"
 msgstr "Anmelden"
 
 #: src/pages/Auth.tsx:36
-msgid "Sign in to Rakazo"
-msgstr "Bei Rakazo anmelden"
+msgid "Sign in to Open Bot"
+msgstr "Bei Open Bot anmelden"
 
 #: src/pages/Auth.tsx:223
 #: src/pages/Welcome.tsx:32
@@ -3468,8 +3468,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "Dieser Server ist bereits verbunden. Trenne zuerst die Verbindung, um ihn erneut zu autorisieren."
 
 #: src/pages/ModelSettingsOverlay.tsx:709
-msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
-msgstr "Diese Abonnementanmeldung ist in Rakazo noch nicht verfügbar. Verwende Zugangsdaten der Bereitstellung oder wähle einen anderen Anbieter."
+msgid "This subscription sign-in is not available in Open Bot yet. Use a deployment credential or choose another provider."
+msgstr "Diese Abonnementanmeldung ist in Open Bot noch nicht verfügbar. Verwende Zugangsdaten der Bereitstellung oder wähle einen anderen Anbieter."
 
 #: src/pages/RoutineSchedule.tsx:207
 msgid "Time of day"
