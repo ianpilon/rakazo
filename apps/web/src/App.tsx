@@ -73,8 +73,14 @@ function SessionApp() {
       <Suspense fallback={<div className="h-full bg-background" />}>
         <Routes>
           {/* Single-owner instance: the front door is sign-in; the marketing welcome page lives at /welcome. */}
-          <Route path="/" element={user ? <Navigate to="/app" replace /> : <Navigate to="/sign-in" replace />} />
-          <Route path="/welcome" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
+          <Route
+            path="/"
+            element={user ? <Navigate to="/app" replace /> : <Navigate to="/sign-in" replace />}
+          />
+          <Route
+            path="/welcome"
+            element={user ? <Navigate to="/app" replace /> : <WelcomePage />}
+          />
           <Route
             path="/sign-in"
             element={
@@ -113,6 +119,10 @@ function SessionApp() {
           <Route path="/app" element={user ? <ShellPage /> : <Navigate to="/sign-in" replace />} />
           <Route
             path="/app/g/:groupId"
+            element={user ? <ShellPage /> : <Navigate to="/sign-in" replace />}
+          />
+          <Route
+            path="/app/s/:sectionId"
             element={user ? <ShellPage /> : <Navigate to="/sign-in" replace />}
           />
           <Route

@@ -270,6 +270,7 @@ import {
 } from "./scratchpad-tools.js";
 import { inferScript } from "./scripted-runtime.js";
 import type { EncryptedSecretStore } from "./secrets.js";
+import { sectionContext } from "./section-context.js";
 import {
   listAgentSkillRecords,
   skillCreateFromTool,
@@ -1077,7 +1078,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           deps.prisma.bot.findUniqueOrThrow({
             where: { id: run.botId },
-            include: { computer: true },
+            include: { computer: true, section: { select: { name: true, goal: true } } },
           }),
           deps.prisma.thread.findUniqueOrThrow({ where: { id: run.threadId } }),
           loadRunHistoryMessages(deps.prisma, run, LEGACY_HISTORY_WINDOW_SIZE, channelId),
@@ -3367,6 +3368,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               prompt,
               instructions: [
                 bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`,
+                sectionContext(bot.section),
                 groupContext,
                 messagingContext,
                 memoryContext ? redactSecrets(memoryContext, runSecrets) : undefined,

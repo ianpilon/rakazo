@@ -300,6 +300,40 @@ describeJourneys("required product journeys", () => {
     });
     expect(foreignSection.status).toBeGreaterThanOrEqual(400);
     expect(await rpc<unknown[]>(app, bob, "botSections/list")).toEqual([]);
+    const withGoal = await rpc<{ id: string; name: string; goal: string | null }>(
+      app,
+      ada,
+      "botSections/update",
+      { sectionId: section.id, goal: "  Ship the roadmap without me chasing it.  " },
+    );
+    expect(withGoal).toMatchObject({
+      id: section.id,
+      name: "Planning",
+      goal: "Ship the roadmap without me chasing it.",
+    });
+    expect(await rpc<Array<{ goal: string | null }>>(app, ada, "botSections/list")).toEqual([
+      expect.objectContaining({ id: section.id, goal: withGoal.goal }),
+    ]);
+    const renamed = await rpc<{ name: string; goal: string | null }>(
+      app,
+      ada,
+      "botSections/update",
+      {
+        sectionId: section.id,
+        name: "Roadmap",
+      },
+    );
+    expect(renamed).toMatchObject({ name: "Roadmap", goal: withGoal.goal });
+    const cleared = await rpc<{ goal: string | null }>(app, ada, "botSections/update", {
+      sectionId: section.id,
+      goal: "",
+    });
+    expect(cleared.goal).toBeNull();
+    const foreignUpdate = await raw(app, bob, "botSections/update", {
+      sectionId: section.id,
+      goal: "not mine",
+    });
+    expect(foreignUpdate.status).toBeGreaterThanOrEqual(400);
     const duplicate = await rpc<Bot>(app, ada, "bots/duplicate", { botId: chief.id });
     expect(duplicate).toMatchObject({
       name: "Chief copy",

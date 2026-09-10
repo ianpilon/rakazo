@@ -3742,3 +3742,11 @@ msgstr "Rename {0}"
 #: src/pages/Shell.tsx
 msgid "Actions for section"
 msgstr "Actions for section"
+
+#: src/pages/SectionOverview.tsx
+msgid "Goal"
+msgstr "Goal"
+
+#: src/pages/SectionOverview.tsx
+msgid "Could not save goal"
+msgstr "Could not save goal"

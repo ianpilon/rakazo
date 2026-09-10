@@ -385,6 +385,7 @@ model BotSection {
   userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
+  goal      String?
   position  Int         @default(0)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt

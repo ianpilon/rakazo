@@ -137,6 +137,7 @@ export type GroupDetail = z.infer<typeof GroupDetailSchema>;
 export const BotSectionSchema = z.object({
   id: Id,
   name: z.string(),
+  goal: z.string().nullable(),
   position: z.number().int().nonnegative(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -275,6 +276,8 @@ export const BOT_NAME_MAX_LENGTH = 80;
 export const BOT_TITLE_MAX_LENGTH = 500;
 export const BOT_DESCRIPTION_MAX_LENGTH = 4000;
 export const BOT_INSTRUCTIONS_MAX_LENGTH = 20000;
+/** A section goal joins every member bot's system prompt on every run, so it stays a short purpose statement. */
+export const BOT_SECTION_GOAL_MAX_LENGTH = 2000;
 
 export const CreateBotInput = z.object({
   name: z.string().trim().min(1).max(BOT_NAME_MAX_LENGTH),

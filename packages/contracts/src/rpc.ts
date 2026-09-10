@@ -12,6 +12,7 @@ import {
   ArtifactSchema,
   ArtifactWithContentSchema,
   AvatarStyleSchema,
+  BOT_SECTION_GOAL_MAX_LENGTH,
   BotMcpServerSchema,
   BotSchema,
   BotSectionSchema,
@@ -255,8 +256,14 @@ export const appContract = {
     create: oc
       .input(threadTarget.safeExtend({ name: z.string().trim().min(1).max(60) }))
       .output(BotSectionSchema),
-    rename: oc
-      .input(z.object({ sectionId: Id, name: z.string().trim().min(1).max(60) }))
+    update: oc
+      .input(
+        z.object({
+          sectionId: Id,
+          name: z.string().trim().min(1).max(60).optional(),
+          goal: z.string().trim().max(BOT_SECTION_GOAL_MAX_LENGTH).optional(),
+        }),
+      )
       .output(BotSectionSchema),
   },
   threads: {

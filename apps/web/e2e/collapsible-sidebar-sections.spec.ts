@@ -22,6 +22,7 @@ test("titled sidebar section expands and collapses", async ({ page }, testInfo) 
   await expect(projects).toContainText("Projects");
   await expect(projects).toContainText("Chief");
 
+  const title = projects.getByRole("button", { name: "Open Projects", exact: true });
   const toggle = projects.getByRole("button", { name: /Collapse Projects|Expand Projects/ });
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
@@ -29,15 +30,18 @@ test("titled sidebar section expands and collapses", async ({ page }, testInfo) 
   await sidebar.getByPlaceholder("Search").hover();
   await captureScreenshot(page, testInfo, "sidebar-section-expanded");
 
-  // Hover header with Chief selected underneath — outer edges must match.
+  // Hover header with Chief selected underneath — outer edges must match:
+  // the title starts where the bot row starts and the chevron ends where it ends.
   await bot.click();
-  await toggle.hover();
-  const headerBox = await toggle.boundingBox();
+  await title.hover();
+  const titleBox = await title.boundingBox();
+  const toggleBox = await toggle.boundingBox();
   const botBox = await bot.boundingBox();
-  expect(headerBox).toBeTruthy();
+  expect(titleBox).toBeTruthy();
+  expect(toggleBox).toBeTruthy();
   expect(botBox).toBeTruthy();
-  expect(headerBox!.x).toBeCloseTo(botBox!.x, 0);
-  expect(headerBox!.x + headerBox!.width).toBeCloseTo(botBox!.x + botBox!.width, 0);
+  expect(titleBox!.x).toBeCloseTo(botBox!.x, 0);
+  expect(toggleBox!.x + toggleBox!.width).toBeCloseTo(botBox!.x + botBox!.width, 0);
   await captureScreenshot(page, testInfo, "sidebar-section-hover");
 
   await toggle.click();

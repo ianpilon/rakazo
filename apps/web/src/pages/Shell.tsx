@@ -93,10 +93,10 @@ import {
   Mic,
   Monitor,
   MoreHorizontal,
-  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
   Paperclip,
+  Pencil,
   Plus,
   Puzzle,
   Reply,
@@ -204,6 +204,7 @@ import {
   RoutineListRow,
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
+import { SectionOverview } from "./SectionOverview";
 import type { SettingsSection } from "./SettingsOverlay";
 import { SpaceSearchResults } from "./SpaceSearch";
 import { BotSettings, CreateBotForm } from "./shell/bot-panel";
@@ -214,9 +215,9 @@ import {
   DeleteBotDialog,
   DeleteItemDialog,
   NewBotSectionDialog,
-  RenameSectionDialog,
   NewSpaceDialog,
   PickerInfoDialog,
+  RenameSectionDialog,
 } from "./shell/dialogs";
 import {
   AppConnectCard,
@@ -312,7 +313,7 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 
 export function ShellPage() {
   const { t } = useLingui();
-  const { botId, groupId } = useParams();
+  const { botId, groupId, sectionId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // Mirrors searchParams for effects that only need to read it once on run,
@@ -501,9 +502,10 @@ export function ShellPage() {
     name: string;
     position: { x: number; y: number };
   } | null>(null);
-  const [renameSectionTarget, setRenameSectionTarget] = useState<{ id: string; name: string } | null>(
-    null,
-  );
+  const [renameSectionTarget, setRenameSectionTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   /** Sidebar group keys look like `section:<id>` (optionally prefixed with the space). */
   const sectionIdFromKey = (key: string) => /(?:^|:)section:([^:]+)$/.exec(key)?.[1] ?? null;
   /** The built-in bucket for bots outside any section; renamed via a user preference. */
@@ -613,8 +615,11 @@ export function ShellPage() {
   const autoSpokenBotId = useRef<string | null>(null);
 
   const inGroup = Boolean(groupId);
-  const active = inGroup ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const active = inGroup || sectionId ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
   const activeGroup = groups.find((group) => group.id === groupId);
+  const activeSection = sectionId
+    ? botSections.find((section) => section.id === sectionId)
+    : undefined;
   const activePendingAttachments = useMemo(
     () => attachmentsForThread(pendingAttachments, inGroup ? groupId : active?.id),
     [active?.id, groupId, inGroup, pendingAttachments],
@@ -626,6 +631,8 @@ export function ShellPage() {
   routeBotId.current = botId;
   const routeGroupId = useRef<string | undefined>(groupId);
   routeGroupId.current = groupId;
+  const routeSectionId = useRef<string | undefined>(sectionId);
+  routeSectionId.current = sectionId;
   const activeBotId = useRef<string | undefined>(inGroup ? undefined : active?.id);
   activeBotId.current = inGroup ? undefined : active?.id;
   const activeGroupId = useRef<string | undefined>(groupId);
@@ -798,6 +805,13 @@ export function ShellPage() {
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
+            navigate(firstThreadRoute(list, groupList), { replace: true });
+          }
+          return;
+        }
+        const currentSectionId = routeSectionId.current;
+        if (currentSectionId) {
+          if (!sections.some((section) => section.id === currentSectionId)) {
             navigate(firstThreadRoute(list, groupList), { replace: true });
           }
           return;
@@ -1024,6 +1038,12 @@ export function ShellPage() {
         }
         if (groupId) {
           if (!groupList.some((group) => group.id === groupId)) {
+            navigate(firstThreadRoute(bootstrap.bots, groupList), { replace: true });
+          }
+          return;
+        }
+        if (sectionId) {
+          if (!bootstrap.botSections.some((section) => section.id === sectionId)) {
             navigate(firstThreadRoute(bootstrap.bots, groupList), { replace: true });
           }
           return;
@@ -2616,10 +2636,15 @@ export function ShellPage() {
                       <div className="flex items-center pt-2">
                         <button
                           type="button"
-                          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-muted-foreground/80 hover:bg-sidebar-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-muted-foreground/80 hover:bg-sidebar-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-foreground"
                           onClick={() => {
                             if (group.emptySpaceId) {
                               openSpaceChat(group.emptySpaceId, "/onboarding");
+                              return;
+                            }
+                            const id = sectionIdFromKey(group.key);
+                            if (id) {
+                              openSpaceChat(group.spaceId, `/app/s/${id}`);
                               return;
                             }
                             toggleSidebarSection(group.key);
@@ -2645,9 +2670,19 @@ export function ShellPage() {
                                   }
                                 : undefined
                           }
-                          aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                          aria-expanded={
+                            group.emptySpaceId || sectionIdFromKey(group.key)
+                              ? undefined
+                              : !collapsed
+                          }
+                          aria-current={
+                            sectionIdFromKey(group.key) &&
+                            sectionIdFromKey(group.key) === activeSection?.id
+                              ? "page"
+                              : undefined
+                          }
                           aria-label={
-                            group.emptySpaceId
+                            group.emptySpaceId || sectionIdFromKey(group.key)
                               ? t`Open ${group.title}`
                               : collapsed
                                 ? t`Expand ${group.title}`
@@ -2660,7 +2695,7 @@ export function ShellPage() {
                             ) : null}
                             <span className="truncate">{group.title}</span>
                           </span>
-                          {group.emptySpaceId ? null : (
+                          {group.emptySpaceId || sectionIdFromKey(group.key) ? null : (
                             <ChevronDown
                               size={14}
                               strokeWidth={1.8}
@@ -2688,6 +2723,28 @@ export function ShellPage() {
                             }}
                           >
                             <Pencil size={13} aria-hidden="true" />
+                          </button>
+                        ) : null}
+                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
+                          <button
+                            type="button"
+                            aria-expanded={!collapsed}
+                            aria-label={
+                              collapsed ? t`Expand ${group.title}` : t`Collapse ${group.title}`
+                            }
+                            className="rounded-md p-1.5 text-muted-foreground/80 transition hover:bg-sidebar-accent hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                            onClick={() => toggleSidebarSection(group.key)}
+                          >
+                            <ChevronDown
+                              size={14}
+                              strokeWidth={1.8}
+                              className={
+                                collapsed
+                                  ? "-rotate-90 transition-transform"
+                                  : "transition-transform"
+                              }
+                              aria-hidden="true"
+                            />
                           </button>
                         ) : null}
                         {group.canDeleteSpace ? (
@@ -3155,7 +3212,7 @@ export function ShellPage() {
                 <span className="block truncate text-[16px] font-medium text-foreground" dir="auto">
                   {inGroup
                     ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                    : (active?.name ?? t`Select a bot`)}
+                    : (active?.name ?? activeSection?.name ?? t`Select a bot`)}
                 </span>
               </span>
             </button>
@@ -3181,7 +3238,22 @@ export function ShellPage() {
             ) : null}
           </div>
         </div>
-        {!active && !activeGroup && initialBotsLoaded ? (
+        {activeSection ? (
+          <SectionOverview
+            key={activeSection.id}
+            section={activeSection}
+            bots={bots.filter((bot) => bot.sectionId === activeSection.id)}
+            groups={groups.filter((group) => group.sectionId === activeSection.id)}
+            onOpenBot={openBot}
+            onOpenGroup={(id) => navigate(`/app/g/${id}`)}
+            onSaveGoal={async (goal) => {
+              const updated = await rpc.botSections.update({ sectionId: activeSection.id, goal });
+              setBotSections((current) =>
+                current.map((section) => (section.id === updated.id ? updated : section)),
+              );
+            }}
+          />
+        ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => setPanel("create")}>
               <Plus size={16} aria-hidden="true" />
@@ -3833,7 +3905,7 @@ export function ShellPage() {
                 setRenameSectionTarget(null);
                 return;
               }
-              const updated = await rpc.botSections.rename({
+              const updated = await rpc.botSections.update({
                 sectionId: renameSectionTarget.id,
                 name,
               });

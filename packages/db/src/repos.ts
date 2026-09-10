@@ -97,6 +97,24 @@ function mapBot(
   };
 }
 
+function serializeBotSection(section: {
+  id: string;
+  name: string;
+  goal: string | null;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+}): BotSection {
+  return {
+    id: section.id,
+    name: section.name,
+    goal: section.goal,
+    position: section.position,
+    createdAt: section.createdAt.toISOString(),
+    updatedAt: section.updatedAt.toISOString(),
+  };
+}
+
 export function createRepos(prisma: PrismaClient) {
   async function listBotSectionsForSpaces(
     actor: Actor,
@@ -108,12 +126,8 @@ export function createRepos(prisma: PrismaClient) {
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
     return sections.map((section) => ({
-      id: section.id,
+      ...serializeBotSection(section),
       spaceId: section.spaceId,
-      name: section.name,
-      position: section.position,
-      createdAt: section.createdAt.toISOString(),
-      updatedAt: section.updatedAt.toISOString(),
     }));
   }
 
@@ -232,41 +246,39 @@ export function createRepos(prisma: PrismaClient) {
             data: { sectionId: section.id },
           });
         }
-        return {
-          id: section.id,
-          name: section.name,
-          position: section.position,
-          createdAt: section.createdAt.toISOString(),
-          updatedAt: section.updatedAt.toISOString(),
-        } satisfies BotSection;
+        return serializeBotSection(section);
       });
     },
 
-    async renameBotSection(
+    async updateBotSection(
       actor: Actor,
-      input: { sectionId: string; name: string },
+      input: { sectionId: string; name?: string; goal?: string },
     ): Promise<BotSection> {
       const existing = await prisma.botSection.findFirst({
         where: { id: input.sectionId, spaceId: actor.spaceId, userId: actor.userId },
         select: { id: true },
       });
       if (!existing) throw new IsolationError();
-      const clash = await prisma.botSection.findFirst({
-        where: { spaceId: actor.spaceId, userId: actor.userId, name: input.name, NOT: { id: existing.id } },
-        select: { id: true },
-      });
-      if (clash) throw new Error("A section with that name already exists");
+      if (input.name !== undefined) {
+        const clash = await prisma.botSection.findFirst({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            name: input.name,
+            NOT: { id: existing.id },
+          },
+          select: { id: true },
+        });
+        if (clash) throw new Error("A section with that name already exists");
+      }
       const section = await prisma.botSection.update({
         where: { id: existing.id },
-        data: { name: input.name },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.goal !== undefined ? { goal: input.goal || null } : {}),
+        },
       });
-      return {
-        id: section.id,
-        name: section.name,
-        position: section.position,
-        createdAt: section.createdAt.toISOString(),
-        updatedAt: section.updatedAt.toISOString(),
-      } satisfies BotSection;
+      return serializeBotSection(section);
     },
 
     async listBots(actor: Actor, options: { archived?: boolean } = {}): Promise<Bot[]> {

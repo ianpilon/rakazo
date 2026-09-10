@@ -1340,8 +1340,8 @@ export function createRouter(deps: RouterDeps) {
       create: authed.botSections.create.handler(async ({ context, input }) =>
         repos.createBotSection(context.actor, input),
       ),
-      rename: authed.botSections.rename.handler(async ({ context, input }) =>
-        repos.renameBotSection(context.actor, input),
+      update: authed.botSections.update.handler(async ({ context, input }) =>
+        repos.updateBotSection(context.actor, input),
       ),
     },
     threads: {
