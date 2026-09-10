@@ -5079,7 +5079,16 @@ async function persistModelCredential(
               },
             });
         throwIfAborted(input.signal);
-        const defaultModel = input.modelId ?? deps.env.defaultModel;
+        // Never persist a missing or junk model id: a saved "null" made every run
+        // fail with "Unknown model local/null". Local providers fall back to the
+        // first deployment-local model; other providers to the deployment default.
+        const requestedModel = input.modelId?.trim();
+        const junkModel = !requestedModel || requestedModel === "null" || requestedModel === "undefined";
+        const localFallback =
+          input.provider === "local"
+            ? (process.env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((id) => id.trim()).find(Boolean)
+            : undefined;
+        const defaultModel = junkModel ? (localFallback ?? deps.env.defaultModel) : requestedModel;
         await selectSpaceModelPreference(tx, actor, credential.id, defaultModel);
         throwIfAborted(input.signal);
         if (existing) {

@@ -284,7 +284,7 @@ export function OnboardingPage() {
         await rpc.models.connect({
           provider,
           apiKey: LOCAL_PROVIDER_PLACEHOLDER_KEY,
-          modelId,
+          modelId: modelId.trim() || selected?.id,
           label: selected?.providerName ?? provider,
         });
       } else if (apiKey) {
