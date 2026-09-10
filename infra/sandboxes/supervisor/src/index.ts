@@ -543,7 +543,8 @@ app.post("/computers/:id/files", async (c) => {
   const body = z
     .object({
       path: z.string(),
-      content: z.string().max(16 * 1024 * 1024),
+      // Base64 of a 100 MiB attachment (see ATTACHMENT_MAX_BYTES).
+      content: z.string().max(Math.ceil((100 * 1024 * 1024) / 3) * 4),
       executable: z.boolean().optional(),
     })
     .parse(await c.req.json());
