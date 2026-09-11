@@ -386,7 +386,7 @@ export function SectionGraph({
           if (!open) setOpenNote(null);
         }}
       >
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[600px]">
+        <SheetContent side="right" className="overflow-y-auto data-[side=right]:sm:max-w-[760px]">
           {openNote ? (
             <>
               <SheetHeader>
