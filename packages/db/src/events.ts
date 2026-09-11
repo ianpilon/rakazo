@@ -549,7 +549,8 @@ export async function answerRunInput(
     const selectedChoice = choiceAsk
       ? pendingAsk.actions?.find((action) => action.id === input.answer)
       : undefined;
-    if (choiceAsk && !selectedChoice) return null;
+    // A choice ask also accepts free text: the user may answer the question with a question
+    // of their own. The text becomes the resumed run's prompt, exactly like a text ask.
     if (secretAsk && !runSecretWriter) return null;
     if (secretAsk && pendingAsk.credential && run.userId !== input.answeredByUserId) return null;
     let approvalEffect: { id: string; kind: string } | null = null;

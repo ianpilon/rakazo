@@ -948,7 +948,7 @@ function groupTarget() {
 }
 
 describe("sendThreadMessage", () => {
-  it("rejects a new bot message while a run is waiting on input", async () => {
+  function waitingAskFixture(ask: Record<string, unknown>) {
     const tx = {
       thread: {
         update: vi.fn().mockResolvedValue({ nextMessageSeq: 2 }),
@@ -959,7 +959,7 @@ describe("sendThreadMessage", () => {
           threadId: "thread-1",
           seq: 1,
           role: "user",
-          blocks: [{ kind: "text", text: "hi" }],
+          blocks: [{ kind: "text", text: "does that mean we skip Twilio?" }],
           botId: null,
           replyToMessageId: null,
           runId: null,
@@ -971,15 +971,30 @@ describe("sendThreadMessage", () => {
         findMany: vi
           .fn()
           .mockResolvedValue([{ id: "run-waiting", taskId: "task-1", status: "waiting_input" }]),
+        findUnique: vi.fn().mockResolvedValue({ status: "queued", startedAt: null }),
       },
       steeringMessage: { create: vi.fn() },
-      event: { create: vi.fn() },
+      event: { create: vi.fn().mockResolvedValue({ seq: 7 }) },
       task: { create: vi.fn() },
     };
     const prisma = {
-      message: { findUnique: vi.fn().mockResolvedValue(null) },
+      message: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "ask-msg",
+            blocks: [{ kind: "ask", text: "Which route?", status: "pending", ...ask }],
+          },
+        ]),
+      },
+      run: { findFirst: vi.fn().mockResolvedValue({ id: "run-waiting", taskId: "task-1" }) },
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
     } as unknown as PrismaClient;
+    const events = {
+      notify: vi.fn().mockResolvedValue(undefined),
+      answerRunInput: vi.fn().mockResolvedValue(true),
+    };
+    const jobs = { enqueue: vi.fn().mockResolvedValue(undefined) };
     const actor = { spaceId: "workspace-1", userId: "user-1" } as Actor;
     const target = {
       kind: "bot",
@@ -987,25 +1002,60 @@ describe("sendThreadMessage", () => {
       threadId: "thread-1",
       bot: { computer: null },
     } as ThreadTarget;
+    return { tx, prisma, events, jobs, actor, target };
+  }
+
+  it("answers a pending choice question with whatever the user types next", async () => {
+    const { tx, prisma, events, jobs, actor, target } = waitingAskFixture({
+      actions: [
+        { id: "twilio", label: "Twilio" },
+        { id: "mcp", label: "MCP server" },
+      ],
+    });
+
+    await sendThreadMessage(
+      { prisma, events: events as never, jobs: jobs as never },
+      actor,
+      target,
+      { text: "does that mean we skip Twilio?", clientNonce: "nonce-1" },
+    );
+
+    expect(events.answerRunInput).toHaveBeenCalledWith({
+      spaceId: "workspace-1",
+      threadId: "thread-1",
+      runId: "run-waiting",
+      messageId: "ask-msg",
+      answeredByUserId: "user-1",
+      answer: "does that mean we skip Twilio?",
+    });
+    expect(tx.steeringMessage.create).not.toHaveBeenCalled();
+    expect(tx.task.create).not.toHaveBeenCalled();
+    expect(tx.message.update).toHaveBeenCalledWith({
+      where: { id: "msg-1" },
+      data: { runId: "run-waiting" },
+    });
+    expect(jobs.enqueue).toHaveBeenCalled();
+  });
+
+  it("still blocks a new message while an approval prompt is pending", async () => {
+    const { tx, prisma, events, jobs, actor, target } = waitingAskFixture({
+      approvalEffectId: "effect-1",
+      actions: [
+        { id: "allow", label: "Allow" },
+        { id: "deny", label: "Deny" },
+      ],
+    });
 
     await expect(
-      sendThreadMessage(
-        {
-          prisma,
-          events: { notify: vi.fn() } as never,
-          jobs: { enqueue: vi.fn() } as never,
-        },
-        actor,
-        target,
-        {
-          text: "hi",
-          clientNonce: "nonce-1",
-        },
-      ),
+      sendThreadMessage({ prisma, events: events as never, jobs: jobs as never }, actor, target, {
+        text: "hi",
+        clientNonce: "nonce-1",
+      }),
     ).rejects.toMatchObject({
       code: "CONFLICT",
       message: "Answer the pending ask first.",
     });
+    expect(events.answerRunInput).not.toHaveBeenCalled();
     expect(tx.steeringMessage.create).not.toHaveBeenCalled();
   });
 });

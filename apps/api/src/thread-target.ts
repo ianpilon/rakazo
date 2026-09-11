@@ -6,6 +6,7 @@ import {
   GROUP_MEMBER_MIN,
   type GroupMember,
   type MessageBlock,
+  MessageBlock as MessageBlockSchema,
   type MessageReaction,
   type RunStatus,
   type ThreadSnapshot,
@@ -13,6 +14,8 @@ import {
 import {
   ACTIVE_RUN_STATUSES,
   isActive,
+  isApprovalAskBlock,
+  isSecretAskBlock,
   projectMessages,
   resolveGroupTargetBotIds,
   runFailureError,
@@ -574,6 +577,38 @@ function mapRun(run: {
   };
 }
 
+/**
+ * A run paused on a plain question (choices or free text, not an approval or a secret) can be
+ * answered by whatever the user types next, so they can ask their own question back instead
+ * of being forced to pick. Returns the waiting run and the message carrying its pending ask.
+ */
+export async function findInterruptableAsk(
+  prisma: PrismaClient,
+  target: { threadId: string; botId: string },
+): Promise<{ runId: string; taskId: string; messageId: string } | null> {
+  const run = await prisma.run.findFirst({
+    where: { threadId: target.threadId, botId: target.botId, status: "waiting_input" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, taskId: true },
+  });
+  if (!run) return null;
+  const messages = await prisma.message.findMany({
+    where: { threadId: target.threadId, runId: run.id, role: "bot" },
+    orderBy: { seq: "desc" },
+    take: 5,
+    select: { id: true, blocks: true },
+  });
+  for (const message of messages) {
+    const parsed = MessageBlockSchema.array().safeParse(message.blocks);
+    if (!parsed.success) continue;
+    const ask = parsed.data.find((block) => block.kind === "ask" && block.status !== "answered");
+    if (ask?.kind !== "ask") continue;
+    if (isApprovalAskBlock(ask) || isSecretAskBlock(ask) || ask.input === "secret") return null;
+    return { runId: run.id, taskId: run.taskId, messageId: message.id };
+  }
+  return null;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -592,6 +627,27 @@ export async function sendThreadMessage(
 ) {
   const existing = await replayExistingSend(deps, target.threadId, input.clientNonce);
   if (existing) return existing;
+
+  // Typing while the bot waits on a plain question answers it with the text, so the user can
+  // push back or ask for clarity instead of being blocked until they pick an option.
+  const interruptText = input.text?.trim() ?? "";
+  const interrupted =
+    target.kind === "bot" && interruptText.length > 0 && !input.artifactIds?.length
+      ? await findInterruptableAsk(deps.prisma, target)
+      : null;
+  if (interrupted) {
+    const answered = await deps.events.answerRunInput({
+      spaceId: actor.spaceId,
+      threadId: target.threadId,
+      runId: interrupted.runId,
+      messageId: interrupted.messageId,
+      answeredByUserId: actor.userId,
+      answer: interruptText,
+    });
+    if (!answered) {
+      throw new ORPCError("CONFLICT", { message: "Answer the pending ask first." });
+    }
+  }
 
   const commit = () =>
     deps.prisma.$transaction(async (tx) => {
@@ -624,6 +680,33 @@ export async function sendThreadMessage(
           replyToMessageId: input.replyToMessageId,
           clientNonce: input.clientNonce,
         });
+        if (interrupted) {
+          // The text already resumed the paused run as its answer; record the message on that
+          // run for the transcript and do not steer it a second time.
+          await tx.message.update({
+            where: { id: message.id },
+            data: { runId: interrupted.runId },
+          });
+          const event = await appendEventInTransaction(tx, {
+            spaceId: actor.spaceId,
+            threadId: target.threadId,
+            botId: target.botId,
+            type: "thread.message.created",
+            runId: interrupted.runId,
+            payload: {
+              messageId: message.id,
+              role: "user",
+              blocks,
+              runIds: [interrupted.runId],
+              replyToMessageId: input.replyToMessageId,
+            },
+          });
+          return {
+            message,
+            runs: [{ id: interrupted.runId, taskId: interrupted.taskId, status: "queued" }],
+            eventSeq: event.seq,
+          };
+        }
         const activeRuns = await tx.run.findMany({
           where: {
             threadId: target.threadId,
