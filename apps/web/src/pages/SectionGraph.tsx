@@ -20,6 +20,8 @@ import { VaultNoteReader } from "./VaultNoteReader";
 const POLL_MS = 30_000;
 /** Labels for every node up to this many; above it only the hovered node and its neighbours. */
 const LABEL_ALL_BELOW = 120;
+/** Pointer travel under this many pixels between down and up still counts as a click. */
+const CLICK_SLOP_PX = 4;
 
 type GraphNode = SimulationNodeDatum & VaultGraph["nodes"][number];
 type GraphLink = SimulationLinkDatum<GraphNode>;
@@ -123,6 +125,7 @@ export function SectionGraph({
     let dragging: GraphNode | null = null;
     let panning: { x: number; y: number; startX: number; startY: number } | null = null;
     let moved = false;
+    let downAt = { x: 0, y: 0 };
     let frame = 0;
 
     const simulation: Simulation<GraphNode, GraphLink> = forceSimulation(nodes)
@@ -267,6 +270,7 @@ export function SectionGraph({
 
     const onPointerDown = (event: PointerEvent) => {
       moved = false;
+      downAt = { x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
       const node = nodeAt(event.clientX, event.clientY);
       if (node) {
@@ -279,7 +283,9 @@ export function SectionGraph({
       }
     };
     const onPointerMove = (event: PointerEvent) => {
+      const travelled = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
       if (dragging) {
+        if (travelled <= CLICK_SLOP_PX && !moved) return;
         moved = true;
         const point = toWorld(event.clientX, event.clientY);
         dragging.fx = point.x;
@@ -287,6 +293,7 @@ export function SectionGraph({
         return;
       }
       if (panning) {
+        if (travelled <= CLICK_SLOP_PX && !moved) return;
         moved = true;
         view.x = panning.x + (event.clientX - panning.startX);
         view.y = panning.y + (event.clientY - panning.startY);
