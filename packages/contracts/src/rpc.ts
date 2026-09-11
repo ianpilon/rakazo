@@ -80,7 +80,7 @@ import {
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
 import { MessageReactionSchema } from "./reactions.js";
-import { RunsListOutputSchema, SectionBoardSchema } from "./runs.js";
+import { RunsListOutputSchema, SectionBoardSchema, VaultGraphSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
 
 const botId = z.object({ botId: Id });
@@ -266,6 +266,7 @@ export const appContract = {
       )
       .output(BotSectionSchema),
     board: oc.input(z.object({ sectionId: Id })).output(SectionBoardSchema),
+    vaultGraph: oc.input(z.object({ sectionId: Id })).output(VaultGraphSchema),
   },
   threads: {
     head: oc.input(threadTarget).output(

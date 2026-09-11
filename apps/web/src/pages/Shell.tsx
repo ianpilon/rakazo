@@ -319,7 +319,9 @@ export function ShellPage() {
     ? "board"
     : sectionPathname.endsWith("/vault")
       ? "vault"
-      : "goal";
+      : sectionPathname.endsWith("/graph")
+        ? "graph"
+        : "goal";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // Mirrors searchParams for effects that only need to read it once on run,
@@ -3269,6 +3271,10 @@ export function ShellPage() {
             vaultBotId={
               bots.find((bot) => bot.sectionId === activeSection.id && bot.computerMode === "team")
                 ?.id ?? null
+            }
+            vaultNote={searchParams.get("note")}
+            onOpenNote={(path) =>
+              navigate(`/app/s/${activeSection.id}/vault?note=${encodeURIComponent(path)}`)
             }
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (

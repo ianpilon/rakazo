@@ -63,3 +63,20 @@ export const SectionBoardSchema = z.object({
   ),
 });
 export type SectionBoard = z.infer<typeof SectionBoardSchema>;
+
+/** The vault as a graph: one node per note, one edge per wikilink between notes. */
+export const VaultGraphSchema = z.object({
+  nodes: z.array(
+    z.object({
+      /** Workspace path of the note, or a missing: id for a note that does not exist yet. */
+      id: z.string(),
+      title: z.string(),
+      folder: z.string(),
+      inbound: z.number().int().nonnegative(),
+      exists: z.boolean(),
+    }),
+  ),
+  edges: z.array(z.object({ source: z.string(), target: z.string() })),
+  truncated: z.boolean(),
+});
+export type VaultGraph = z.infer<typeof VaultGraphSchema>;

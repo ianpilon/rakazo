@@ -3791,3 +3791,11 @@ msgstr "Vault"
 #: src/pages/SectionVault.tsx
 msgid "Nothing shared yet"
 msgstr "Nothing shared yet"
+
+#: src/pages/SectionOverview.tsx
+msgid "Graph"
+msgstr "Graph"
+
+#: src/pages/SectionGraph.tsx
+msgid "Showing the first 500 notes"
+msgstr "Showing the first 500 notes"

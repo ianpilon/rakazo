@@ -75,6 +75,7 @@ import {
   verifyMcpInstall,
 } from "@rakazo/adapters";
 import type { Auth } from "@rakazo/auth";
+import type { VaultGraph } from "@rakazo/contracts";
 import {
   type Actor,
   appContract,
@@ -187,6 +188,11 @@ import {
   threadSnapshot,
 } from "./thread-target.js";
 import {
+  buildVaultGraph,
+  VAULT_GRAPH_MAX_NOTE_BYTES,
+  VAULT_GRAPH_MAX_NOTES,
+} from "./vault-graph.js";
+import {
   listVoiceCatalog,
   loadDefaultVoiceCredential,
   loadVoiceCredential,
@@ -198,6 +204,9 @@ import {
 } from "./voice.js";
 
 const MAX_COMPUTER_TEXT_FILE_BYTES = 2 * 1024 * 1024;
+const VAULT_GRAPH_ROOT = "shared";
+const VAULT_GRAPH_CACHE_MS = 30_000;
+const vaultGraphCache = new Map<string, { at: number; graph: VaultGraph }>();
 const THREAD_MESSAGE_PAGE_SIZE = 100;
 const EXPORT_MESSAGE_PAGE_SIZE = 500;
 
@@ -1347,6 +1356,76 @@ export function createRouter(deps: RouterDeps) {
       board: authed.botSections.board.handler(async ({ context, input }) =>
         loadSectionBoard(deps.prisma, context.actor, input.sectionId),
       ),
+      vaultGraph: authed.botSections.vaultGraph.handler(async ({ context, input }) => {
+        const cacheKey = `${context.actor.spaceId}:${input.sectionId}`;
+        const cached = vaultGraphCache.get(cacheKey);
+        if (cached && Date.now() - cached.at < VAULT_GRAPH_CACHE_MS) return cached.graph;
+        const section = await deps.prisma.botSection.findFirst({
+          where: {
+            id: input.sectionId,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          },
+          select: { id: true },
+        });
+        if (!section) throw new IsolationError();
+        // Any team-computer bot in the section sees the same shared folder.
+        const bot = await deps.prisma.bot.findFirst({
+          where: {
+            sectionId: section.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            archivedAt: null,
+            computer: { scope: "team" },
+          },
+          include: { computer: true },
+        });
+        if (!bot?.computer) return { nodes: [], edges: [], truncated: false };
+        const computer = bot.computer;
+        const ctx = computerContext(context.actor, bot.id, "vault-graph");
+        const live = computer.state === "running" && Boolean(computer.providerRef);
+        if (live) scheduleComputerSleep(deps.jobs, computer.id);
+        const list = (dirPath: string) =>
+          live
+            ? deps.sandbox.listFiles(toComputerRef(computer), dirPath, ctx)
+            : deps.home.list(computer.homeKey, dirPath, ctx);
+        const read = async (filePath: string) =>
+          live
+            ? new TextDecoder("utf-8", { fatal: false }).decode(
+                await deps.sandbox.readFile(toComputerRef(computer), filePath, ctx, {
+                  maxBytes: VAULT_GRAPH_MAX_NOTE_BYTES,
+                }),
+              )
+            : deps.home.readFile(computer.homeKey, filePath, ctx, {
+                maxBytes: VAULT_GRAPH_MAX_NOTE_BYTES,
+              });
+        const notePaths: string[] = [];
+        const queue = [VAULT_GRAPH_ROOT];
+        let truncated = false;
+        while (queue.length > 0 && !truncated) {
+          const dir = queue.shift();
+          if (dir === undefined) break;
+          const entries = await list(dir).catch(() => []);
+          for (const entry of entries) {
+            if (entry.path.split("/").some((segment) => segment.startsWith("."))) continue;
+            if (entry.kind === "dir") {
+              queue.push(entry.path);
+            } else if (entry.path.toLowerCase().endsWith(".md")) {
+              if (notePaths.length >= VAULT_GRAPH_MAX_NOTES) {
+                truncated = true;
+                break;
+              }
+              notePaths.push(entry.path);
+            }
+          }
+        }
+        const notes = await Promise.all(
+          notePaths.map(async (path) => ({ path, content: await read(path).catch(() => "") })),
+        );
+        const graph = buildVaultGraph(notes, { root: VAULT_GRAPH_ROOT, truncated });
+        vaultGraphCache.set(cacheKey, { at: Date.now(), graph });
+        return graph;
+      }),
     },
     threads: {
       head: authed.threads.head.handler(async ({ context, input }) => {

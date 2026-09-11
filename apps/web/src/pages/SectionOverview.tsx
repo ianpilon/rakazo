@@ -5,9 +5,10 @@ import { BotAvatar, Button, Textarea } from "@rakazo/ui-web";
 import { Users } from "lucide-react";
 import { useId, useState } from "react";
 import { SectionBoard } from "./SectionBoard";
+import { SectionGraph } from "./SectionGraph";
 import { SectionVault } from "./SectionVault";
 
-export type SectionView = "goal" | "board" | "vault";
+export type SectionView = "goal" | "board" | "vault" | "graph";
 
 /** The page behind a sidebar section: its goal, then the bots and groups that serve it. */
 export function SectionOverview({
@@ -20,6 +21,8 @@ export function SectionOverview({
   view,
   onChangeView,
   vaultBotId,
+  vaultNote,
+  onOpenNote,
 }: {
   section: BotSection;
   bots: Bot[];
@@ -31,6 +34,9 @@ export function SectionOverview({
   onChangeView: (view: SectionView) => void;
   /** A team-computer bot in the section; the Vault tab reads the shared folder through it. */
   vaultBotId: string | null;
+  /** Note to open on the Vault tab, from a graph click. */
+  vaultNote: string | null;
+  onOpenNote: (path: string) => void;
 }) {
   const { t } = useLingui();
   const goalId = useId();
@@ -49,22 +55,34 @@ export function SectionOverview({
           {section.name}
         </h1>
         <div role="tablist" className="mt-4 flex gap-1 border-b border-border">
-          {(["goal", "board", ...(vaultBotId ? (["vault"] as const) : [])] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={view === tab}
-              onClick={() => onChangeView(tab)}
-              className="-mb-px border-b-2 border-transparent px-3 py-2 text-[13.5px] text-muted-foreground hover:text-foreground aria-selected:border-foreground aria-selected:text-foreground"
-            >
-              {tab === "goal" ? t`Goal` : tab === "board" ? t`Board` : t`Vault`}
-            </button>
-          ))}
+          {(["goal", "board", ...(vaultBotId ? (["vault", "graph"] as const) : [])] as const).map(
+            (tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={view === tab}
+                onClick={() => onChangeView(tab)}
+                className="-mb-px border-b-2 border-transparent px-3 py-2 text-[13.5px] text-muted-foreground hover:text-foreground aria-selected:border-foreground aria-selected:text-foreground"
+              >
+                {tab === "goal"
+                  ? t`Goal`
+                  : tab === "board"
+                    ? t`Board`
+                    : tab === "vault"
+                      ? t`Vault`
+                      : t`Graph`}
+              </button>
+            ),
+          )}
         </div>
-        {view === "vault" && vaultBotId ? (
+        {view === "graph" && vaultBotId ? (
           <div className="mt-6">
-            <SectionVault botId={vaultBotId} />
+            <SectionGraph sectionId={section.id} onOpenNote={onOpenNote} />
+          </div>
+        ) : view === "vault" && vaultBotId ? (
+          <div className="mt-6">
+            <SectionVault botId={vaultBotId} initialPath={vaultNote} />
           </div>
         ) : view === "board" ? (
           <div className="mt-6">

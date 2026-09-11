@@ -37,11 +37,17 @@ async function walk(botId: string): Promise<Entry[]> {
 }
 
 /** Read-only view of the bots' shared folder: a folder tree and a note reader with wikilinks. */
-export function SectionVault({ botId }: { botId: string }) {
+export function SectionVault({
+  botId,
+  initialPath,
+}: {
+  botId: string;
+  initialPath: string | null;
+}) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [openPath, setOpenPath] = useState<string | null>(null);
+  const [openPath, setOpenPath] = useState<string | null>(initialPath);
   const [content, setContent] = useState<string | null>(null);
 
   useEffect(() => {
