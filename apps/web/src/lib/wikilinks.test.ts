@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { resolveWikilink, wikilinksToMarkdownLinks, wikilinkTarget } from "./wikilinks";
+import {
+  resolveWikilink,
+  stripFrontMatter,
+  wikilinksToMarkdownLinks,
+  wikilinkTarget,
+} from "./wikilinks";
 
 describe("wikilinks", () => {
   it("rewrites plain, aliased, and heading wikilinks into hash links", () => {
@@ -14,6 +19,16 @@ describe("wikilinks", () => {
     expect(wikilinkTarget("https://x.test/app#wikilink=Karpathy%20Vault")).toBe("Karpathy Vault");
     expect(wikilinkTarget("https://x.test/")).toBeNull();
     expect(wikilinkTarget(undefined)).toBeNull();
+  });
+
+  it("strips a leading front matter block and nothing else", () => {
+    expect(stripFrontMatter("---\ncreated: 2026-09-10\ntags: [a, b]\n---\n# Title\nbody")).toBe(
+      "# Title\nbody",
+    );
+    expect(stripFrontMatter("# Title\n---\nnot front matter\n---\n")).toBe(
+      "# Title\n---\nnot front matter\n---\n",
+    );
+    expect(stripFrontMatter("---\nonly: this\n---")).toBe("");
   });
 
   it("resolves by note name like Obsidian, preferring a full path match", () => {

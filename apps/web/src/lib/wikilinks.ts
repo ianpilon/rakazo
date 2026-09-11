@@ -43,3 +43,9 @@ export function resolveWikilink(target: string, filePaths: readonly string[]): s
   }
   return byName;
 }
+
+/** Drops a leading YAML front matter block, which Obsidian shows as properties, not prose. */
+export function stripFrontMatter(markdown: string): string {
+  const match = markdown.match(/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+  return match ? markdown.slice(match[0].length) : markdown;
+}

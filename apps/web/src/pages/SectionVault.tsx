@@ -3,7 +3,12 @@ import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import { ChevronDown, ChevronRight, FileText, Folder } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rpc } from "../lib/rpc";
-import { resolveWikilink, wikilinksToMarkdownLinks, wikilinkTarget } from "../lib/wikilinks";
+import {
+  resolveWikilink,
+  stripFrontMatter,
+  wikilinksToMarkdownLinks,
+  wikilinkTarget,
+} from "../lib/wikilinks";
 
 const ROOT = "shared";
 const POLL_MS = 15_000;
@@ -188,7 +193,7 @@ export function SectionVault({ botId }: { botId: string }) {
               // biome-ignore lint/a11y/noStaticElementInteractions: click delegation for wikilinks rendered by the shared markdown component
               // biome-ignore lint/a11y/useSemanticElements: the links inside are real anchors; this wrapper only intercepts them
               <div onClickCapture={onLinkClick}>
-                <ChatMarkdown>{wikilinksToMarkdownLinks(content)}</ChatMarkdown>
+                <ChatMarkdown>{wikilinksToMarkdownLinks(stripFrontMatter(content))}</ChatMarkdown>
               </div>
             ) : (
               <pre className="overflow-x-auto whitespace-pre-wrap text-[13px] text-foreground/85">
