@@ -20,6 +20,10 @@ const APPROVAL_EXEMPT_TOOLS = new Set([
   "schedule_create",
   "schedule_list",
   "schedule_cancel",
+  // Texting the owner on the team line, and a manager bot granting it: the owner already
+  // opted each bot in with a per-bot switch, so the checker adds nothing but latency.
+  "send_text",
+  "set_bot_texting",
 ]);
 
 const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
