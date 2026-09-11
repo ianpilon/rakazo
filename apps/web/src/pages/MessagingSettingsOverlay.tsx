@@ -455,27 +455,36 @@ function SmsLineSection({
             });
           }}
         >
+          {/* Names and autocomplete hints keep browser password managers from filling these. */}
           <Input
+            name="twilio-account-sid"
             aria-label={t`Twilio account SID`}
             placeholder={t`Account SID`}
             value={accountSid}
             onChange={(event) => setAccountSid(event.target.value)}
             autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
           />
           <Input
+            name="twilio-auth-token"
             aria-label={t`Twilio auth token`}
             placeholder={t`Auth token`}
             type="password"
             value={authToken}
             onChange={(event) => setAuthToken(event.target.value)}
-            autoComplete="off"
+            autoComplete="new-password"
+            data-1p-ignore
+            data-lpignore="true"
           />
           <Input
+            name="twilio-from-number"
             aria-label={t`Sending number`}
             placeholder="+12495550123"
             value={fromNumber}
             onChange={(event) => setFromNumber(event.target.value)}
             autoComplete="off"
+            inputMode="tel"
           />
           <div className="flex flex-wrap gap-2">
             <Button
