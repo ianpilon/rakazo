@@ -15,6 +15,7 @@ import {
   createRunExecutor,
   createRunSandbox,
   createRunSecretWriter,
+  createTwilioPlatform,
   createWebProvider,
   EncryptedSecretStore,
   ExpoPushProvider,
@@ -27,6 +28,7 @@ import {
   isPipedreamEnabled,
   LocalAgentHomeStore,
   LocalArtifactStore,
+  loadSmsLineConfig,
   McpConnector,
   McpOAuthBroker,
   messagingEnvFromProcess,
@@ -110,7 +112,17 @@ async function main() {
   // only ever sends outbound (messaging.deliver jobs). It must never poll
   // Telegram — that would steal the single getUpdates slot away from the
   // API process, which is the one with the inbound sink actually wired up.
-  const messagingPlatforms = messagingPlatformsFromEnv(messagingEnvFromProcess(process.env));
+  const messagingPlatforms = [
+    ...messagingPlatformsFromEnv(messagingEnvFromProcess(process.env)),
+    createTwilioPlatform({
+      config: () =>
+        loadSmsLineConfig({
+          prisma,
+          secrets,
+          webOrigin: process.env.WEB_ORIGIN?.trim() || "http://127.0.0.1:5173",
+        }),
+    }),
+  ];
   const messaging = isMessagingSurfaceEnabled(messagingPlatforms, {
     deploymentModelKey,
     openSignup: process.env.MESSAGING_OPEN_SIGNUP === "true",

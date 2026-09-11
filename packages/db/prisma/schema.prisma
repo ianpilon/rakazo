@@ -186,6 +186,7 @@ model Space {
   actionApprovalRules         ActionApprovalRule[]
   actionAutoReviewPreferences ActionAutoReviewPreference[]
   memoryConfig                SpaceMemoryConfig?
+  messagingProviderConfigs    MessagingProviderConfig[]
   secrets                     Secret[]
   chatGroups                  ChatGroup[]
   botSecrets BotSecret[]
@@ -338,6 +339,10 @@ model Bot {
   parentBotId       String?
   spawnKey          String?
   memoryScope       String?
+  /// May send texts on the space's SMS line, stamped with its name. Off until the owner allows it.
+  smsSendAllowed    Boolean           @default(false)
+  /// May turn smsSendAllowed on or off for the owner's other bots (a manager bot).
+  smsGrantAllowed   Boolean           @default(false)
   parent            Bot?              @relation("BotChildren", fields: [parentBotId], references: [id], onDelete: SetNull)
   children          Bot[]             @relation("BotChildren")
   createdAt         DateTime          @default(now())
@@ -1026,6 +1031,7 @@ model Secret {
   createdAt         DateTime           @default(now())
   mcpServers        McpServer[]
   spaceMemoryConfig SpaceMemoryConfig?
+  messagingProviderConfig MessagingProviderConfig?
   agentSecret       AgentSecret?
 
   @@index([userId, spaceId])
@@ -1106,7 +1112,9 @@ model MessagingIdentity {
   userId               String
   spaceId              String
   space                Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  botId                String    @unique
+  /// The bot that currently owns this conversation. On a team line (SMS) it moves to whichever
+  /// bot texted last or the bot the user named, so one number serves every bot.
+  botId                String
   verifiedAt           DateTime?
   lastInboundAt        DateTime?
   outboundSinceInbound Int       @default(0)
@@ -1115,6 +1123,7 @@ model MessagingIdentity {
 
   @@unique([provider, address])
   @@index([userId])
+  @@index([botId])
   @@map("messaging_identities")
 }
 
@@ -1180,6 +1189,24 @@ model MessagingOutbound {
 
   @@index([status, nextAttemptAt])
   @@map("messaging_outbound")
+}
+
+/// Account details for a messaging line configured from the app (SMS today), one per provider
+/// per space. The vendor credential lives encrypted in Secret.
+model MessagingProviderConfig {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  provider  String
+  settings  Json
+  secretId  String   @unique
+  secret    Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([spaceId, provider])
+  @@map("messaging_provider_configs")
 }
 
 model AgentConnection {

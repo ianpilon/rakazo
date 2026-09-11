@@ -6,10 +6,16 @@ import type {
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
-import { botMessageHopExhausted, nextBotMessageHop } from "@rakazo/core";
+import {
+  botMessageHopExhausted,
+  isTeamLineProvider,
+  nextBotMessageHop,
+  stampTeamLineBody,
+} from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { findTeamLineIdentityForBot } from "./team-line-tools.js";
 
 /**
  * Margin under vendor consecutive-outbound caps (sendblue enforces one hard):
@@ -90,10 +96,18 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
     return;
   }
 
-  const identity = await deps.prisma.messagingIdentity.findUnique({
-    where: { botId: run.botId },
-  });
+  const identity =
+    (await deps.prisma.messagingIdentity.findFirst({ where: { botId: run.botId } })) ??
+    (await findTeamLineIdentityForBot(deps.prisma, run.botId));
   if (!identity) return;
+  const teamLine = isTeamLineProvider(identity.provider);
+  // On a team line only replies to the owner's texts mirror back; anything else a bot wants
+  // the owner to see by text goes through send_text, so inter-bot traffic never pages them.
+  if (teamLine && run.trigger !== "messaging") return;
+  const botName = teamLine
+    ? ((await deps.prisma.bot.findUnique({ where: { id: run.botId }, select: { name: true } }))
+        ?.name ?? "")
+    : "";
 
   // bot_message runs can carry the bot's user-facing reply after a delegate wake.
   // extractText only keeps kind:"text", so inter-bot chatter blocks never leak out.
@@ -110,8 +124,15 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
       body: extractText(message.blocks),
       sourceMessageId: message.id,
     }))
-    .filter((row) => row.body);
+    .filter((row) => row.body)
+    .map((row) => (teamLine ? { ...row, body: stampTeamLineBody(botName, row.body) } : row));
   if (rows.length === 0) return;
+  if (teamLine && identity.botId !== run.botId) {
+    await deps.prisma.messagingIdentity.update({
+      where: { id: identity.id },
+      data: { botId: run.botId },
+    });
+  }
   // Atomic dedupe: a concurrent messaging.deliver for the same run loses on
   // the idempotencyKey unique key instead of throwing P2002.
   await deps.prisma.messagingOutbound.createMany({ data: rows, skipDuplicates: true });
@@ -127,7 +148,7 @@ async function mirrorChannelRun(
   run: { id: string; botId: string },
   channelBlock: Extract<MessageBlock, { kind: "channel_message" }>,
 ): Promise<void> {
-  const identity = await deps.prisma.messagingIdentity.findUnique({
+  const identity = await deps.prisma.messagingIdentity.findFirst({
     where: { botId: run.botId },
   });
   if (!identity) return;

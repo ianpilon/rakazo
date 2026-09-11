@@ -92,6 +92,10 @@ function createDeps(
   };
   const prisma = {
     messagingIdentity: {
+      // Lookups by botId use findFirst since a team line may serve several bots; same handler.
+      get findFirst() {
+        return this.findUnique;
+      },
       findUnique: vi.fn(
         async ({
           where,

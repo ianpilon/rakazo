@@ -840,6 +840,40 @@ export const builtinAgentTools: ConnectorTool[] = [
 ];
 
 /** Agent-connection tools, exposed only when the messaging surface is enabled. */
+/** Texting on the owner's line; only offered to bots that can reach a messaging identity. */
+export const teamLineTools: ConnectorTool[] = [
+  {
+    name: "send_text",
+    description:
+      "Send a short text message (SMS) to the owner's phone. It is stamped with your name automatically, so write only the message. Use it for what the owner should see away from the app: a result, an alert, a question. Never send acknowledgements or repeats; it costs the owner attention.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        message: { type: "string", maxLength: 1200, description: "The text to send." },
+      },
+      required: ["message"],
+    },
+  },
+];
+
+/** Offered only to a bot the owner trusts to manage texting for the team. */
+export const teamLineGrantTools: ConnectorTool[] = [
+  {
+    name: "set_bot_texting",
+    description:
+      "Allow or forbid another of the owner's bots to send texts on the shared line. Name the bot by bot_id or its exact name from your teammate list.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        bot_id: { type: "string" },
+        bot_name: { type: "string" },
+        enabled: { type: "boolean" },
+      },
+      required: ["enabled"],
+    },
+  },
+];
+
 export const agentConnectionTools: ConnectorTool[] = [
   {
     name: "connect_agent",

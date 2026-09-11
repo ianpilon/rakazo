@@ -330,8 +330,15 @@ async function readBoundedText(request: Request, maxBytes: number): Promise<stri
 
 function parseStatus(platform: MessagingPlatform, body: string): MessagingOutboundStatus | null {
   try {
-    return platform.peekStatus?.(JSON.parse(body)) ?? null;
+    return platform.peekStatus?.(parseWebhookBody(body)) ?? null;
   } catch {
     return null;
   }
+}
+
+/** Vendors post JSON or form fields; Twilio uses the latter. */
+function parseWebhookBody(body: string): unknown {
+  const trimmed = body.trimStart();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return JSON.parse(body);
+  return Object.fromEntries(new URLSearchParams(body));
 }

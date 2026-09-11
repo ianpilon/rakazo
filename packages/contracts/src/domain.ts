@@ -62,6 +62,10 @@ export const BotSchema = z.object({
   createdAt: z.string(),
   voiceId: z.string().nullable(),
   autoSpeak: z.boolean(),
+  /** May send texts on the owner's SMS line. */
+  smsSendAllowed: z.boolean(),
+  /** May grant or revoke texting for the owner's other bots. */
+  smsGrantAllowed: z.boolean(),
   modelProvider: z.string().nullable(),
   modelId: z.string().nullable(),
   thinkingLevel: ThinkingLevelSchema.nullable(),
@@ -318,6 +322,8 @@ export const UpdateBotInput = z
     sectionId: Id.nullable().optional(),
     voiceId: z.string().max(120).nullable().optional(),
     autoSpeak: z.boolean().optional(),
+    smsSendAllowed: z.boolean().optional(),
+    smsGrantAllowed: z.boolean().optional(),
     modelProvider: z.string().trim().min(1).max(80).nullable().optional(),
     modelId: z.string().trim().min(1).max(200).nullable().optional(),
     thinkingLevel: ThinkingLevelSchema.nullable().optional(),
@@ -779,6 +785,15 @@ export const MessagingLinkedIdentitySchema = z.object({
   botName: z.string(),
 });
 export type MessagingLinkedIdentity = z.infer<typeof MessagingLinkedIdentitySchema>;
+
+/** The space's SMS line: configured from the app, one number every allowed bot texts from. */
+export const SmsLineStatusSchema = z.object({
+  configured: z.boolean(),
+  fromNumber: z.string().nullable(),
+  /** Where Twilio must post inbound messages and delivery reports. */
+  webhookUrl: z.string(),
+});
+export type SmsLineStatus = z.infer<typeof SmsLineStatusSchema>;
 
 export const MessagingStatusSchema = z.object({
   enabled: z.boolean(),

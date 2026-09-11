@@ -5,6 +5,7 @@ import type {
   MessagingAgentConnection,
   MessagingChannelMembership,
   MessagingStatus,
+  SmsLineStatus,
 } from "@rakazo/contracts";
 import {
   Button,
@@ -12,6 +13,7 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
+  Input,
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
@@ -33,16 +35,20 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
   const [linkBotId, setLinkBotId] = useState("");
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [smsLine, setSmsLine] = useState<SmsLineStatus | null>(null);
 
   async function refresh() {
-    const [nextStatus, nextChannels, nextConnections, nextBots, navigation] = await Promise.all([
-      rpc.messaging.status(),
-      rpc.messaging.channels.list(),
-      rpc.messaging.connections.list(),
-      rpc.bots.list(),
-      rpc.spaces.list(),
-    ]);
+    const [nextStatus, nextChannels, nextConnections, nextBots, navigation, nextSmsLine] =
+      await Promise.all([
+        rpc.messaging.status(),
+        rpc.messaging.channels.list(),
+        rpc.messaging.connections.list(),
+        rpc.bots.list(),
+        rpc.spaces.list(),
+        rpc.messaging.sms.status().catch(() => null),
+      ]);
     setStatus(nextStatus);
+    setSmsLine(nextSmsLine);
     setChannels(nextChannels);
     setConnections(nextConnections);
     setBots(nextBots);
@@ -106,6 +112,8 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
         </div>
 
         {error ? <p className="mt-4 text-[13px] text-destructive">{error}</p> : null}
+
+        {status?.providers.includes("twilio") ? <SmsLineSection line={smsLine} act={act} /> : null}
 
         <section className="mt-8 rounded-xl border border-border px-4 py-4">
           <h3 className="text-[15px] font-medium text-foreground">
@@ -384,5 +392,112 @@ export function MessagingSettingsOverlay({ onClose }: { onClose: () => void }) {
         </section>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The space's SMS line: one Twilio number every allowed bot texts from. Credentials go
+ * straight to the server and are stored encrypted; the token is never shown back.
+ */
+function SmsLineSection({
+  line,
+  act,
+}: {
+  line: SmsLineStatus | null;
+  act: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const { t } = useLingui();
+  const [accountSid, setAccountSid] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [fromNumber, setFromNumber] = useState("");
+  const [editing, setEditing] = useState(false);
+  const configured = Boolean(line?.configured) && !editing;
+
+  return (
+    <section
+      className="mt-8 rounded-xl border border-border px-4 py-4"
+      data-testid="sms-line-settings"
+    >
+      <h3 className="text-[15px] font-medium text-foreground">
+        <Trans>Text messages</Trans>
+      </h3>
+      {configured ? (
+        <>
+          <p className="mt-3 text-[14px] text-foreground/75">{line?.fromNumber}</p>
+          <p className="mt-2 text-[13px] text-muted-foreground/70">
+            <Trans>
+              In Twilio, set the number's messaging webhook to{" "}
+              <span className="font-mono text-foreground">{line?.webhookUrl}</span>
+            </Trans>
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>
+              <Trans>Change</Trans>
+            </Button>
+            <Button
+              variant="secondary"
+              className="rounded-full"
+              onClick={() => void act(() => rpc.messaging.sms.disconnect())}
+            >
+              <Trans>Disconnect</Trans>
+            </Button>
+          </div>
+        </>
+      ) : (
+        <form
+          className="mt-3 flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void act(async () => {
+              await rpc.messaging.sms.configure({ accountSid, authToken, fromNumber });
+              setAuthToken("");
+              setEditing(false);
+            });
+          }}
+        >
+          <Input
+            aria-label={t`Twilio account SID`}
+            placeholder={t`Account SID`}
+            value={accountSid}
+            onChange={(event) => setAccountSid(event.target.value)}
+            autoComplete="off"
+          />
+          <Input
+            aria-label={t`Twilio auth token`}
+            placeholder={t`Auth token`}
+            type="password"
+            value={authToken}
+            onChange={(event) => setAuthToken(event.target.value)}
+            autoComplete="off"
+          />
+          <Input
+            aria-label={t`Sending number`}
+            placeholder="+12495550123"
+            value={fromNumber}
+            onChange={(event) => setFromNumber(event.target.value)}
+            autoComplete="off"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              className="rounded-full"
+              disabled={!accountSid || !authToken || !fromNumber}
+            >
+              <Trans>Save</Trans>
+            </Button>
+            {editing ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="rounded-full"
+                onClick={() => setEditing(false)}
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

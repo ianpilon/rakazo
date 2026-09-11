@@ -26,6 +26,7 @@ import {
   createRunExecutor,
   createRunSandbox,
   createRunSecretWriter,
+  createTwilioPlatform,
   createWebProvider,
   type DestinationEmulator,
   destroyBot,
@@ -42,6 +43,7 @@ import {
   isPipedreamEnabled,
   LocalAgentHomeStore,
   LocalArtifactStore,
+  loadSmsLineConfig,
   McpConnector,
   McpOAuthBroker,
   messagingPlatformsFromEnv,
@@ -230,7 +232,14 @@ export async function createApp(
   // so it's the one that must hold Telegram's live getUpdates connection —
   // see messagingPlatformsFromEnv's docstring for why a second poller
   // elsewhere (e.g. the worker) would actively break this.
-  const messagingPlatforms = messagingPlatformsFromEnv(env, { pollInboundMessages: true });
+  const messagingPlatforms = [
+    ...messagingPlatformsFromEnv(env, { pollInboundMessages: true }),
+    // The SMS line is configured from the app, so it is always mounted and reads its
+    // account details on each call; until it is set up the webhook answers 404.
+    createTwilioPlatform({
+      config: () => loadSmsLineConfig({ prisma, secrets, webOrigin: env.webOrigin }),
+    }),
+  ];
   const messaging =
     messagingOverride ??
     (isMessagingSurfaceEnabled(messagingPlatforms, {

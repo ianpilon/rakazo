@@ -1,7 +1,12 @@
 import type { JobPublisher, MessagingInboundMessage } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
-import { parseMessagingCommand, sanitizeMessagingLabel } from "@rakazo/core";
+import {
+  isTeamLineProvider,
+  parseBotAddress,
+  parseMessagingCommand,
+  sanitizeMessagingLabel,
+} from "@rakazo/core";
 import type {
   MessagingIdentityRequest,
   Prisma,
@@ -81,7 +86,7 @@ async function handleDirectEvent(
 ): Promise<void> {
   // Inbound media arrives as a CDN URL (often expiring); no artifact
   // ingestion in v1, so it rides along as text.
-  const text = [event.content, event.mediaUrl].filter(Boolean).join("\n");
+  let text = [event.content, event.mediaUrl].filter(Boolean).join("\n");
 
   const where = { provider_address: { provider: event.provider, address: event.from } } as const;
   const existing = await deps.prisma.messagingIdentity.findUnique({ where });
@@ -97,6 +102,33 @@ async function handleDirectEvent(
     // Owner commands are only parsed in the verified 1:1 conversation.
     const command = parseMessagingCommand(event.content);
     if (command && (await applyOwnerCommand(deps, existing, command))) return;
+    // On a team line the owner can name the bot a text is for; the line then follows that bot.
+    if (isTeamLineProvider(existing.provider)) {
+      const bots = await deps.prisma.bot.findMany({
+        where: { userId: existing.userId, spaceId: existing.spaceId, archivedAt: null },
+        select: { id: true, name: true },
+      });
+      const addressed = parseBotAddress(event.content, bots);
+      if (addressed) {
+        if (addressed.bot.id !== existing.botId) {
+          await deps.prisma.messagingIdentity.update({
+            where: { id: existing.id },
+            data: { botId: addressed.bot.id },
+          });
+          existing.botId = addressed.bot.id;
+        }
+        if (!addressed.rest) {
+          await enqueueConfirmation(
+            deps,
+            existing,
+            `switch:${existing.id}`,
+            `Now talking to ${addressed.bot.name}.`,
+          );
+          return;
+        }
+        text = [addressed.rest, event.mediaUrl].filter(Boolean).join("\n");
+      }
+    }
     // A linked sender pasting a fresh code re-points this address at another
     // of their bots (only their own codes apply).
     if (await tryRedeemLinkCode(deps, event)) return;
@@ -398,7 +430,7 @@ async function applyOwnerCommand(
 
   const connectedKey = `command:connected:${target.connection.id}`;
   const requesterIdentity = approved
-    ? await deps.prisma.messagingIdentity.findUnique({
+    ? await deps.prisma.messagingIdentity.findFirst({
         where: { botId: target.connection.requesterBotId },
       })
     : null;

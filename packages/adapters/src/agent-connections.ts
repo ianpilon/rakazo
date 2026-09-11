@@ -46,7 +46,7 @@ export async function connectAgent(
 ): Promise<Result> {
   const address = input.address?.trim();
   if (!address) return { ok: false, error: "address is required" };
-  const requesterIdentity = await deps.prisma.messagingIdentity.findUnique({
+  const requesterIdentity = await deps.prisma.messagingIdentity.findFirst({
     where: { botId: sender.id },
   });
   // Connection invites are a messaging-surface feature; a bot whose owner
@@ -213,7 +213,7 @@ export async function messageConnectedAgent(
   const address = input.address?.trim();
   if (!address) return { ok: false, error: "address is required" };
 
-  const senderIdentity = await deps.prisma.messagingIdentity.findUnique({
+  const senderIdentity = await deps.prisma.messagingIdentity.findFirst({
     where: { botId: sender.id },
   });
   if (!senderIdentity) {

@@ -1,4 +1,5 @@
 const PROVIDER_LABELS: Record<string, string> = {
+  twilio: "SMS",
   sendblue: "iMessage",
   slack: "Slack",
   whatsapp: "WhatsApp",

@@ -86,6 +86,10 @@ function createDeps(
   const connection = overrides.connection === undefined ? null : overrides.connection;
   const prisma = {
     messagingIdentity: {
+      // Lookups by botId use findFirst since a team line may serve several bots; same handler.
+      get findFirst() {
+        return this.findUnique;
+      },
       findUnique: vi.fn(
         async ({
           where,

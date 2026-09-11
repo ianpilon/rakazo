@@ -171,6 +171,7 @@ import {
   type UpdaterProxyConfig,
   UpdaterProxyError,
 } from "./server-update.js";
+import { disconnectSmsLine, persistSmsLineConfig, smsLineStatus } from "./sms-line.js";
 import { assertTeachingSendAllowed, createTaughtSkillsService } from "./taught-skills.js";
 import {
   isPeerRun,
@@ -1064,6 +1065,8 @@ export function createRouter(deps: RouterDeps) {
             sectionId: input.sectionId,
             voiceId: input.voiceId,
             autoSpeak: input.autoSpeak,
+            smsSendAllowed: input.smsSendAllowed,
+            smsGrantAllowed: input.smsGrantAllowed,
             ...(input.modelProvider !== undefined
               ? { modelProvider: input.modelProvider, modelId: input.modelId ?? null }
               : {}),
@@ -4110,8 +4113,8 @@ export function createRouter(deps: RouterDeps) {
           });
           if (!bot) throw new ORPCError("NOT_FOUND");
           // One chat identity per bot: delivery mirrors a bot's replies to
-          // exactly one conversation.
-          const linked = await deps.prisma.messagingIdentity.findUnique({
+          // exactly one conversation. (A team line moves between bots instead.)
+          const linked = await deps.prisma.messagingIdentity.findFirst({
             where: { botId: bot.id },
             select: { id: true },
           });
@@ -4231,6 +4234,27 @@ export function createRouter(deps: RouterDeps) {
           return { ok: true as const };
         }),
       },
+      sms: {
+        status: authed.messaging.sms.status.handler(async ({ context }) =>
+          smsLineStatus(
+            { prisma: deps.prisma, secrets: deps.secrets, webOrigin: deps.env.webOrigin },
+            context.actor,
+          ),
+        ),
+        configure: authed.messaging.sms.configure.handler(async ({ context, input }) =>
+          persistSmsLineConfig(
+            { prisma: deps.prisma, secrets: deps.secrets, webOrigin: deps.env.webOrigin },
+            context.actor,
+            input,
+          ),
+        ),
+        disconnect: authed.messaging.sms.disconnect.handler(async ({ context }) =>
+          disconnectSmsLine(
+            { prisma: deps.prisma, secrets: deps.secrets, webOrigin: deps.env.webOrigin },
+            context.actor,
+          ),
+        ),
+      },
       connections: {
         list: authed.messaging.connections.list.handler(async ({ context }) => {
           const identities = await messagingIdentitiesFor(deps.prisma, context.actor.userId);
@@ -4279,7 +4303,7 @@ export function createRouter(deps: RouterDeps) {
             });
             if (!input.accept) return { updated: row, notifyRequester: false };
             // Parity with the text-command path: the requester hears about it.
-            const requesterIdentity = await tx.messagingIdentity.findUnique({
+            const requesterIdentity = await tx.messagingIdentity.findFirst({
               where: { botId: connection.requesterBotId },
             });
             if (!requesterIdentity) return { updated: row, notifyRequester: false };
@@ -5363,7 +5387,7 @@ async function messagingConnectionDto(
     where: { id: peerBotId },
     select: { name: true },
   });
-  const peerIdentity = await prisma.messagingIdentity.findUnique({
+  const peerIdentity = await prisma.messagingIdentity.findFirst({
     where: { botId: peerBotId },
     select: { userId: true },
   });

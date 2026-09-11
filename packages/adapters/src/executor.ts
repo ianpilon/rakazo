@@ -153,7 +153,12 @@ import {
   browserNavigateFromTool,
   browserSnapshotFromTool,
 } from "./browser-tools.js";
-import { agentConnectionTools, builtinAgentTools } from "./builtin-tools.js";
+import {
+  agentConnectionTools,
+  builtinAgentTools,
+  teamLineGrantTools,
+  teamLineTools,
+} from "./builtin-tools.js";
 import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
 import { type CloudAgentConnection, cloudAgentsEnabled } from "./cloud-agent-factory.js";
 import { executeCloudAgentTool } from "./cloud-agent-service.js";
@@ -280,6 +285,7 @@ import {
 } from "./skill-tools.js";
 import { type TakeoverResumeCheckpoint, takeoverResumeFromRelease } from "./takeover-resume.js";
 import { getActiveTeachingSession, parsePlaybook } from "./teaching-session.js";
+import { sendTeamLineText, setBotTexting } from "./team-line-tools.js";
 import {
   attachWorkspaceFileToThread,
   currentTurnFilesInstruction,
@@ -1412,6 +1418,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
           ...(hasMessagingIdentity ? agentConnectionTools : []),
+          ...(hasMessagingIdentity ? teamLineTools : []),
+          ...(bot.smsGrantAllowed ? teamLineGrantTools : []),
         ];
         const exposedConnectorTools = discovered.filter(
           (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
@@ -3160,6 +3168,31 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
             if (!sent.ok) return finish({ error: sent.error });
             return finish({ ok: true, botId: sent.botId, name: sent.name, note: sent.note });
+          }
+          if (name === "send_text") {
+            const result = await sendTeamLineText(
+              deps,
+              { id: bot.id, name: bot.name },
+              {
+                message: redactSecrets(String(args.message ?? ""), runSecrets),
+                deliveryKey: executionId,
+              },
+            );
+            if (!result.ok) return finish({ error: result.error });
+            return finish({ ok: true, note: "Text queued for delivery." });
+          }
+          if (name === "set_bot_texting") {
+            const result = await setBotTexting(
+              deps.prisma,
+              { id: bot.id, userId: run.userId, spaceId: run.spaceId },
+              {
+                botId: args.bot_id ? String(args.bot_id) : undefined,
+                botName: args.bot_name ? String(args.bot_name) : undefined,
+                enabled: Boolean(args.enabled),
+              },
+            );
+            if (!result.ok) return finish({ error: result.error });
+            return finish(result);
           }
           if (name === "connect_agent") {
             const result = await connectAgent(

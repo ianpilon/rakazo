@@ -207,6 +207,8 @@ export function BotSettings({
     computerMode: ComputerMode;
     memoryScope?: "isolated" | "shared" | null;
     autoSpeak?: boolean;
+    smsSendAllowed?: boolean;
+    smsGrantAllowed?: boolean;
     voiceId?: string | null;
     modelProvider?: string | null;
     modelId?: string | null;
@@ -225,6 +227,8 @@ export function BotSettings({
   const [computerMode, setComputerMode] = useState(bot.computerMode);
   const [memoryScope, setMemoryScope] = useState(bot.memoryScope);
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
+  const [smsSendAllowed, setSmsSendAllowed] = useState(bot.smsSendAllowed);
+  const [smsGrantAllowed, setSmsGrantAllowed] = useState(bot.smsGrantAllowed);
   const [voiceId, setVoiceId] = useState(bot.voiceId ?? "");
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [modelKey, setModelKey] = useState(
@@ -477,6 +481,28 @@ export function BotSettings({
           />
           <Trans>Read replies aloud</Trans>
         </label>
+        <label
+          htmlFor={`${ids}-sms-send`}
+          className="mt-3 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
+        >
+          <Switch
+            id={`${ids}-sms-send`}
+            checked={smsSendAllowed}
+            onCheckedChange={(checked) => setSmsSendAllowed(checked)}
+          />
+          <Trans>Can send texts</Trans>
+        </label>
+        <label
+          htmlFor={`${ids}-sms-grant`}
+          className="mt-3 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
+        >
+          <Switch
+            id={`${ids}-sms-grant`}
+            checked={smsGrantAllowed}
+            onCheckedChange={(checked) => setSmsGrantAllowed(checked)}
+          />
+          <Trans>Can let other bots send texts</Trans>
+        </label>
         {voices.length ? (
           <label htmlFor={`${ids}-voice`} className={fieldLabelClass}>
             <Trans>Voice</Trans>
@@ -519,6 +545,8 @@ export function BotSettings({
               computerMode,
               memoryScope,
               autoSpeak,
+              smsSendAllowed,
+              smsGrantAllowed,
               voiceId: voiceId || null,
               modelProvider: selected?.provider ?? null,
               modelId: selected?.modelId ?? null,

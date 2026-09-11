@@ -56,6 +56,7 @@ import {
   ServerUpdateRunSchema,
   ServerUpdateStatusSchema,
   SkillPlaybookSchema,
+  SmsLineStatusSchema,
   SpaceMemoryConfigSchema,
   SpaceNavigationSchema,
   SpaceSchema,
@@ -682,6 +683,19 @@ export const appContract = {
         .input(z.object({ connectionId: Id, accept: z.boolean() }))
         .output(MessagingAgentConnectionSchema),
       revoke: oc.input(z.object({ connectionId: Id })).output(z.object({ ok: z.literal(true) })),
+    },
+    sms: {
+      status: oc.output(SmsLineStatusSchema),
+      configure: oc
+        .input(
+          z.object({
+            accountSid: z.string().trim().min(1).max(64),
+            authToken: z.string().trim().min(1).max(256),
+            fromNumber: z.string().trim().min(1).max(32),
+          }),
+        )
+        .output(SmsLineStatusSchema),
+      disconnect: oc.output(z.object({ ok: z.literal(true) })),
     },
   },
   approvalRules: {

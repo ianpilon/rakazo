@@ -50,6 +50,8 @@ function mapBot(
     computer: { scope: string } | null;
     voiceId?: string | null;
     autoSpeak?: boolean;
+    smsSendAllowed?: boolean;
+    smsGrantAllowed?: boolean;
     modelProvider?: string | null;
     modelId?: string | null;
     thinkingLevel?: string | null;
@@ -87,6 +89,8 @@ function mapBot(
     updatedAt: bot.updatedAt.toISOString(),
     voiceId: bot.voiceId ?? null,
     autoSpeak: bot.autoSpeak ?? false,
+    smsSendAllowed: bot.smsSendAllowed ?? false,
+    smsGrantAllowed: bot.smsGrantAllowed ?? false,
     modelProvider: bot.modelProvider ?? null,
     modelId: bot.modelId ?? null,
     thinkingLevel: (bot.thinkingLevel as Bot["thinkingLevel"]) ?? null,

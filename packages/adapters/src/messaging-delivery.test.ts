@@ -63,6 +63,7 @@ function createFakeSurface(sendError?: Error) {
 function createDeps(overrides: {
   run?: unknown;
   identity?: Record<string, unknown> | null;
+  bot?: { name: string; smsSendAllowed?: boolean } | null;
   messages?: unknown[];
   outboundRows?: unknown[];
   existingOutbox?: unknown;
@@ -79,6 +80,8 @@ function createDeps(overrides: {
       findUnique: vi.fn(async () => overrides.run ?? messagingRun),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
+    // A bot without its own identity falls back to the owner's team line, which needs the bot row.
+    bot: { findUnique: vi.fn(async () => overrides.bot ?? null) },
     message: {
       findMany: vi.fn(
         async () =>
@@ -88,6 +91,10 @@ function createDeps(overrides: {
       ),
     },
     messagingIdentity: {
+      // Lookups by botId use findFirst since a team line may serve several bots; same handler.
+      get findFirst() {
+        return this.findUnique;
+      },
       findUnique: vi.fn(async () => identityRow),
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         if (identityRow && typeof data.dmThreadId === "string") {
@@ -258,6 +265,31 @@ describe("deliverMessagingOutbound", () => {
     const noIdentity = createDeps({ identity: null });
     await deliverMessagingOutbound(noIdentity, { runId: "run-1" }, context);
     expect(noIdentity.sendToThread).not.toHaveBeenCalled();
+  });
+
+  it("stamps replies on the SMS team line with the bot's name and follows that bot", async () => {
+    const deps = createDeps({
+      identity: { provider: "twilio", botId: "bot-2", dmThreadId: "twilio:abc" },
+      bot: { name: "Decision Log bot" },
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).toHaveBeenCalledWith(
+      { threadId: "twilio:abc", body: "Open Bot\nfrom Decision Log bot\n\nHello from your bot" },
+      context,
+    );
+    expect(deps.prisma.messagingIdentity.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ botId: "bot-1" }) }),
+    );
+  });
+
+  it("keeps bot-to-bot replies off the SMS team line", async () => {
+    const deps = createDeps({
+      run: { ...messagingRun, trigger: "bot_message" },
+      identity: { provider: "twilio", botId: "bot-1", dmThreadId: "twilio:abc" },
+      bot: { name: "Chief" },
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).not.toHaveBeenCalled();
   });
 
   it("mirrors delegated bot_message replies to the linked DM", async () => {
@@ -659,6 +691,10 @@ function createChannelDeps(
       findUnique: vi.fn(async () => null),
     },
     messagingIdentity: {
+      // Lookups by botId use findFirst since a team line may serve several bots; same handler.
+      get findFirst() {
+        return this.findUnique;
+      },
       findUnique: vi.fn(async ({ where }: { where: { botId?: string; id?: string } }) => {
         if (where.botId === "bot-1" || where.id === "mi-1") return posterIdentity;
         if (where.botId === "bot-2" || where.id === "mi-2") return peerIdentity;

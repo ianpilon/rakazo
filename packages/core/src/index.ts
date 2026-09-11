@@ -24,6 +24,7 @@ export * from "./message-reactions.js";
 export * from "./message-visibility.js";
 export * from "./messaging-commands.js";
 export * from "./messaging-prompts.js";
+export * from "./messaging-team-line.js";
 export * from "./model-oauth.js";
 export * from "./model-probe.js";
 export * from "./model-providers.js";

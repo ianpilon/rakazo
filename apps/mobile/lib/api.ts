@@ -793,6 +793,7 @@ const MESSAGING_PROVIDER_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp",
   telegram: "Telegram",
   lark: "Feishu",
+  twilio: "SMS",
 };
 
 export function messagingProviderLabel(provider: string, transport?: string): string {

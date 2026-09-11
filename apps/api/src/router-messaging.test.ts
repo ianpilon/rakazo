@@ -73,7 +73,18 @@ function messagingDeps(
   const connectionState = connection ? { ...connection } : null;
   const prisma = {
     messagingIdentity: {
-      findFirst: vi.fn(async () => resolvedIdentity),
+      // Lookups by botId use findFirst (a team line may serve several bots); by id resolves as before.
+      findFirst: vi.fn(async ({ where }: { where?: { botId?: string } } = {}) =>
+        where?.botId === "bot-9"
+          ? {
+              id: "mi-9",
+              provider: "sendblue",
+              address: "+15559999999",
+              userId: "user-9",
+              botId: "bot-9",
+            }
+          : resolvedIdentity,
+      ),
       findMany: vi.fn(
         async () => overrides.identities ?? (resolvedIdentity ? [resolvedIdentity] : []),
       ),

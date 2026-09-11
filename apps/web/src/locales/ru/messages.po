@@ -3794,3 +3794,43 @@ msgstr "Showing the first 500 notes"
 #: src/pages/SectionGraph.tsx
 msgid "Open in Vault"
 msgstr "Open in Vault"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Text messages"
+msgstr "Text messages"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Change"
+msgstr "Change"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Account SID"
+msgstr "Account SID"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Auth token"
+msgstr "Auth token"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Twilio account SID"
+msgstr "Twilio account SID"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Twilio auth token"
+msgstr "Twilio auth token"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Sending number"
+msgstr "Sending number"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Can send texts"
+msgstr "Can send texts"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "Can let other bots send texts"
+msgstr "Can let other bots send texts"
+
+#: src/pages/MessagingSettingsOverlay.tsx
+msgid "In Twilio, set the number's messaging webhook to {0}"
+msgstr "In Twilio, set the number's messaging webhook to {0}"
