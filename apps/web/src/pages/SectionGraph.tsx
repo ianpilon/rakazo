@@ -6,6 +6,8 @@ import {
   forceLink,
   forceManyBody,
   forceSimulation,
+  forceX,
+  forceY,
   type Simulation,
   type SimulationLinkDatum,
   type SimulationNodeDatum,
@@ -42,6 +44,12 @@ export function SectionGraph({
   onOpenNote: (path: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // The click handler changes identity on every parent render; keep it out of the layout
+  // effect's dependencies so the simulation only rebuilds when the graph data changes.
+  const onOpenNoteRef = useRef(onOpenNote);
+  onOpenNoteRef.current = onOpenNote;
+  // Positions survive a rebuild so a new note appears without the rest of the graph jumping.
+  const positions = useRef(new Map<string, { x: number; y: number }>());
   const [graph, setGraph] = useState<VaultGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +82,10 @@ export function SectionGraph({
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    const nodes: GraphNode[] = graph.nodes.map((node) => ({ ...node }));
+    const nodes: GraphNode[] = graph.nodes.map((node) => ({
+      ...node,
+      ...positions.current.get(node.id),
+    }));
     const byId = new Map(nodes.map((node) => [node.id, node]));
     const links: GraphLink[] = graph.edges
       .filter((edge) => byId.has(edge.source) && byId.has(edge.target))
@@ -99,8 +110,11 @@ export function SectionGraph({
           .id((node) => node.id)
           .distance(70),
       )
-      .force("charge", forceManyBody().strength(-180))
+      .force("charge", forceManyBody().strength(-160))
       .force("center", forceCenter(0, 0))
+      // A weak pull to the middle keeps notes with no links from drifting off the canvas.
+      .force("x", forceX<GraphNode>(0).strength(0.06))
+      .force("y", forceY<GraphNode>(0).strength(0.06))
       .force(
         "collide",
         forceCollide<GraphNode>().radius((node) => radius(node) + 6),
@@ -207,7 +221,14 @@ export function SectionGraph({
       if (frame === 0) frame = window.requestAnimationFrame(draw);
     };
 
-    simulation.on("tick", schedule);
+    simulation.on("tick", () => {
+      for (const node of nodes) {
+        if (node.x !== undefined && node.y !== undefined) {
+          positions.current.set(node.id, { x: node.x, y: node.y });
+        }
+      }
+      schedule();
+    });
 
     const onPointerDown = (event: PointerEvent) => {
       moved = false;
@@ -252,7 +273,7 @@ export function SectionGraph({
         node.fx = null;
         node.fy = null;
         simulation.alphaTarget(0);
-        if (!moved && node.exists) onOpenNote(node.id);
+        if (!moved && node.exists) onOpenNoteRef.current(node.id);
         return;
       }
       panning = null;
@@ -302,7 +323,7 @@ export function SectionGraph({
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [graph, onOpenNote]);
+  }, [graph]);
 
   return (
     <div data-testid="section-graph" className="min-w-0">
