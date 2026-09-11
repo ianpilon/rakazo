@@ -5,6 +5,9 @@ import { BotAvatar, Button, Textarea } from "@rakazo/ui-web";
 import { Users } from "lucide-react";
 import { useId, useState } from "react";
 import { SectionBoard } from "./SectionBoard";
+import { SectionVault } from "./SectionVault";
+
+export type SectionView = "goal" | "board" | "vault";
 
 /** The page behind a sidebar section: its goal, then the bots and groups that serve it. */
 export function SectionOverview({
@@ -16,6 +19,7 @@ export function SectionOverview({
   onSaveGoal,
   view,
   onChangeView,
+  vaultBotId,
 }: {
   section: BotSection;
   bots: Bot[];
@@ -23,8 +27,10 @@ export function SectionOverview({
   onOpenBot: (botId: string) => void;
   onOpenGroup: (groupId: string) => void;
   onSaveGoal: (goal: string) => Promise<void>;
-  view: "goal" | "board";
-  onChangeView: (view: "goal" | "board") => void;
+  view: SectionView;
+  onChangeView: (view: SectionView) => void;
+  /** A team-computer bot in the section; the Vault tab reads the shared folder through it. */
+  vaultBotId: string | null;
 }) {
   const { t } = useLingui();
   const goalId = useId();
@@ -37,13 +43,13 @@ export function SectionOverview({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" data-testid="section-overview">
       <div
-        className={`mx-auto w-full px-6 py-8 ${view === "board" ? "max-w-[1100px]" : "max-w-[640px]"}`}
+        className={`mx-auto w-full px-6 py-8 ${view === "goal" ? "max-w-[640px]" : "max-w-[1100px]"}`}
       >
         <h1 className="text-[22px] font-medium text-foreground" dir="auto">
           {section.name}
         </h1>
         <div role="tablist" className="mt-4 flex gap-1 border-b border-border">
-          {(["goal", "board"] as const).map((tab) => (
+          {(["goal", "board", ...(vaultBotId ? (["vault"] as const) : [])] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -52,11 +58,15 @@ export function SectionOverview({
               onClick={() => onChangeView(tab)}
               className="-mb-px border-b-2 border-transparent px-3 py-2 text-[13.5px] text-muted-foreground hover:text-foreground aria-selected:border-foreground aria-selected:text-foreground"
             >
-              {tab === "goal" ? t`Goal` : t`Board`}
+              {tab === "goal" ? t`Goal` : tab === "board" ? t`Board` : t`Vault`}
             </button>
           ))}
         </div>
-        {view === "board" ? (
+        {view === "vault" && vaultBotId ? (
+          <div className="mt-6">
+            <SectionVault botId={vaultBotId} />
+          </div>
+        ) : view === "board" ? (
           <div className="mt-6">
             <SectionBoard
               sectionId={section.id}

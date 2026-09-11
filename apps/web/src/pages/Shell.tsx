@@ -204,7 +204,7 @@ import {
   RoutineListRow,
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
-import { SectionOverview } from "./SectionOverview";
+import { SectionOverview, type SectionView } from "./SectionOverview";
 import type { SettingsSection } from "./SettingsOverlay";
 import { SpaceSearchResults } from "./SpaceSearch";
 import { BotSettings, CreateBotForm } from "./shell/bot-panel";
@@ -314,7 +314,12 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId, sectionId } = useParams();
-  const sectionView = useLocation().pathname.endsWith("/board") ? "board" : "goal";
+  const sectionPathname = useLocation().pathname;
+  const sectionView: SectionView = sectionPathname.endsWith("/board")
+    ? "board"
+    : sectionPathname.endsWith("/vault")
+      ? "vault"
+      : "goal";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // Mirrors searchParams for effects that only need to read it once on run,
@@ -3256,10 +3261,14 @@ export function ShellPage() {
             view={sectionView}
             onChangeView={(view) =>
               navigate(
-                view === "board"
-                  ? `/app/s/${activeSection.id}/board`
-                  : `/app/s/${activeSection.id}`,
+                view === "goal"
+                  ? `/app/s/${activeSection.id}`
+                  : `/app/s/${activeSection.id}/${view}`,
               )
+            }
+            vaultBotId={
+              bots.find((bot) => bot.sectionId === activeSection.id && bot.computerMode === "team")
+                ?.id ?? null
             }
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (

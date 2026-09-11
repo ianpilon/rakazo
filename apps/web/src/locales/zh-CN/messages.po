@@ -3783,3 +3783,11 @@ msgstr "No tool calls"
 #: src/pages/SectionBoard.tsx
 msgid "Open thread"
 msgstr "Open thread"
+
+#: src/pages/SectionOverview.tsx
+msgid "Vault"
+msgstr "Vault"
+
+#: src/pages/SectionVault.tsx
+msgid "Nothing shared yet"
+msgstr "Nothing shared yet"

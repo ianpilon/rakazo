@@ -250,7 +250,8 @@ async function ensureContainedDirectory(root: string, candidate: string) {
       current = await realpath(next);
     } catch (error) {
       if (!isMissing(error)) throw error;
-      await mkdir(next);
+      // Two concurrent listings can both see the segment missing; the second mkdir must not fail.
+      await mkdir(next, { recursive: true });
       current = await realpath(next);
     }
     assertContained(resolvedRoot, current);
