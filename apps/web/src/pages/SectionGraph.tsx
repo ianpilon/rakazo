@@ -50,6 +50,8 @@ export function SectionGraph({
   onOpenNoteRef.current = onOpenNote;
   // Positions survive a rebuild so a new note appears without the rest of the graph jumping.
   const positions = useRef(new Map<string, { x: number; y: number }>());
+  // The user's pan and zoom survive a rebuild too.
+  const viewStore = useRef<View | null>(null);
   const [graph, setGraph] = useState<VaultGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +88,7 @@ export function SectionGraph({
       ...node,
       ...positions.current.get(node.id),
     }));
+    const carriedOver = nodes.filter((node) => node.x !== undefined).length;
     const byId = new Map(nodes.map((node) => [node.id, node]));
     const links: GraphLink[] = graph.edges
       .filter((edge) => byId.has(edge.source) && byId.has(edge.target))
@@ -97,6 +100,7 @@ export function SectionGraph({
     }
 
     const view: View = { x: 0, y: 0, k: 1 };
+    const viewRef = viewStore;
     let hovered: GraphNode | null = null;
     let dragging: GraphNode | null = null;
     let panning: { x: number; y: number; startX: number; startY: number } | null = null;
@@ -119,14 +123,25 @@ export function SectionGraph({
         "collide",
         forceCollide<GraphNode>().radius((node) => radius(node) + 6),
       );
+    // A rebuild after the vault grew keeps the old layout and only settles the new notes.
+    if (carriedOver > 0) simulation.alpha(carriedOver === nodes.length ? 0.1 : 0.4);
 
+    let sized = false;
     const size = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.round(rect.width * dpr));
-      canvas.height = Math.max(1, Math.round(rect.height * dpr));
-      view.x = rect.width / 2;
-      view.y = rect.height / 2;
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width === width && canvas.height === height && sized) return;
+      canvas.width = width;
+      canvas.height = height;
+      if (!sized) {
+        // First sizing centres the origin; later resizes keep the user's pan and zoom.
+        view.x = viewRef.current?.x ?? rect.width / 2;
+        view.y = viewRef.current?.y ?? rect.height / 2;
+        view.k = viewRef.current?.k ?? 1;
+        sized = true;
+      }
     };
 
     const toWorld = (clientX: number, clientY: number) => {
@@ -313,6 +328,7 @@ export function SectionGraph({
     schedule();
 
     return () => {
+      viewStore.current = { ...view };
       simulation.stop();
       observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
