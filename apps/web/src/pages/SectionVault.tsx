@@ -1,14 +1,8 @@
 import { Trans } from "@lingui/react/macro";
-import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import { ChevronDown, ChevronRight, FileText, Folder } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { rpc } from "../lib/rpc";
-import {
-  resolveWikilink,
-  stripFrontMatter,
-  wikilinksToMarkdownLinks,
-  wikilinkTarget,
-} from "../lib/wikilinks";
+import { VaultNoteReader } from "./VaultNoteReader";
 
 const ROOT = "shared";
 const POLL_MS = 15_000;
@@ -48,7 +42,6 @@ export function SectionVault({
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [openPath, setOpenPath] = useState<string | null>(initialPath);
-  const [content, setContent] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,25 +70,6 @@ export function SectionVault({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botId]);
 
-  useEffect(() => {
-    if (!openPath) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const file = await rpc.computer.readFile({ botId, path: openPath });
-        if (!cancelled) setContent(file.content);
-      } catch (err: unknown) {
-        if (!cancelled) setContent(err instanceof Error ? err.message : String(err));
-      }
-    };
-    void load();
-    const timer = window.setInterval(() => void load(), POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [botId, openPath]);
-
   const filePaths = useMemo(
     () => (entries ?? []).filter((entry) => entry.kind === "file").map((entry) => entry.path),
     [entries],
@@ -113,19 +87,6 @@ export function SectionVault({
     }
     return map;
   }, [entries]);
-
-  const onLinkClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const anchor = (event.target as HTMLElement).closest("a");
-      const target = wikilinkTarget(anchor?.getAttribute("href"));
-      if (!target) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const resolved = resolveWikilink(target, filePaths);
-      if (resolved) setOpenPath(resolved);
-    },
-    [filePaths],
-  );
 
   const renderTree = (dir: string, depth: number): React.ReactNode =>
     (childrenOf.get(dir) ?? []).map((entry) => {
@@ -174,8 +135,6 @@ export function SectionVault({
       );
     });
 
-  const isMarkdown = openPath?.toLowerCase().endsWith(".md") ?? false;
-
   return (
     <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]" data-testid="section-vault">
       <nav aria-label="Vault" className="min-w-0">
@@ -195,17 +154,12 @@ export function SectionVault({
             <div className="mb-3 truncate text-[12.5px] text-muted-foreground" dir="auto">
               {openPath.slice(ROOT.length + 1)}
             </div>
-            {content === null ? null : isMarkdown ? (
-              // biome-ignore lint/a11y/noStaticElementInteractions: click delegation for wikilinks rendered by the shared markdown component
-              // biome-ignore lint/a11y/useSemanticElements: the links inside are real anchors; this wrapper only intercepts them
-              <div onClickCapture={onLinkClick}>
-                <ChatMarkdown>{wikilinksToMarkdownLinks(stripFrontMatter(content))}</ChatMarkdown>
-              </div>
-            ) : (
-              <pre className="overflow-x-auto whitespace-pre-wrap text-[13px] text-foreground/85">
-                {content}
-              </pre>
-            )}
+            <VaultNoteReader
+              botId={botId}
+              path={openPath}
+              filePaths={filePaths}
+              onNavigate={setOpenPath}
+            />
           </>
         ) : null}
       </article>

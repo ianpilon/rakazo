@@ -78,7 +78,7 @@ export function SectionOverview({
         </div>
         {view === "graph" && vaultBotId ? (
           <div className="mt-6">
-            <SectionGraph sectionId={section.id} onOpenNote={onOpenNote} />
+            <SectionGraph sectionId={section.id} botId={vaultBotId} onOpenNote={onOpenNote} />
           </div>
         ) : view === "vault" && vaultBotId ? (
           <div className="mt-6">

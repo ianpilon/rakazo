@@ -18,6 +18,7 @@ export * from "./components/ui/popover.js";
 export * from "./components/ui/scroll-area.js";
 export * from "./components/ui/select.js";
 export * from "./components/ui/separator.js";
+export * from "./components/ui/sheet.js";
 export * from "./components/ui/skeleton.js";
 export * from "./components/ui/spinner.js";
 export * from "./components/ui/switch.js";

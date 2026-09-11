@@ -1,5 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import type { VaultGraph } from "@rakazo/contracts";
+import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from "@rakazo/ui-web";
 import {
   forceCenter,
   forceCollide,
@@ -12,8 +13,9 @@ import {
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from "d3-force";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { rpc } from "../lib/rpc";
+import { VaultNoteReader } from "./VaultNoteReader";
 
 const POLL_MS = 30_000;
 /** Labels for every node up to this many; above it only the hovered node and its neighbours. */
@@ -38,9 +40,13 @@ function token(el: HTMLElement, name: string, fallback: string): string {
  */
 export function SectionGraph({
   sectionId,
+  botId,
   onOpenNote,
 }: {
   sectionId: string;
+  /** Team-computer bot used to read a note's content into the side panel. */
+  botId: string;
+  /** Opens the note on the Vault tab; the side panel offers it as a button. */
   onOpenNote: (path: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -54,6 +60,18 @@ export function SectionGraph({
   const viewStore = useRef<View | null>(null);
   const [graph, setGraph] = useState<VaultGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Note shown in the side panel; the graph stays where it is. */
+  const [openNote, setOpenNote] = useState<string | null>(null);
+  const selectedRef = useRef<string | null>(null);
+  const redrawRef = useRef<() => void>(() => undefined);
+  const filePaths = useMemo(
+    () => (graph?.nodes ?? []).filter((node) => node.exists).map((node) => node.id),
+    [graph],
+  );
+  useEffect(() => {
+    selectedRef.current = openNote;
+    redrawRef.current();
+  }, [openNote]);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,7 +233,8 @@ export function SectionGraph({
         context.beginPath();
         context.arc(node.x, node.y, r, 0, Math.PI * 2);
         if (node.exists) {
-          context.fillStyle = hovered?.id === node.id ? ink : muted;
+          context.fillStyle =
+            hovered?.id === node.id || selectedRef.current === node.id ? ink : muted;
           context.fill();
         } else {
           context.fillStyle = paper;
@@ -235,6 +254,7 @@ export function SectionGraph({
     const schedule = () => {
       if (frame === 0) frame = window.requestAnimationFrame(draw);
     };
+    redrawRef.current = schedule;
 
     simulation.on("tick", () => {
       for (const node of nodes) {
@@ -288,7 +308,7 @@ export function SectionGraph({
         node.fx = null;
         node.fy = null;
         simulation.alphaTarget(0);
-        if (!moved && node.exists) onOpenNoteRef.current(node.id);
+        if (!moved && node.exists) setOpenNote(node.id);
         return;
       }
       panning = null;
@@ -360,6 +380,37 @@ export function SectionGraph({
         aria-label="Vault graph"
         className="h-[70vh] w-full touch-none rounded-xl border border-border bg-card"
       />
+      <Sheet
+        open={openNote !== null}
+        onOpenChange={(open) => {
+          if (!open) setOpenNote(null);
+        }}
+      >
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[600px]">
+          {openNote ? (
+            <>
+              <SheetHeader>
+                <SheetTitle dir="auto">
+                  {graph?.nodes.find((node) => node.id === openNote)?.title ?? openNote}
+                </SheetTitle>
+              </SheetHeader>
+              <div className="px-4 pb-4">
+                <VaultNoteReader
+                  botId={botId}
+                  path={openNote}
+                  filePaths={filePaths}
+                  onNavigate={setOpenNote}
+                />
+              </div>
+              <div className="px-4 pb-6">
+                <Button variant="outline" size="sm" onClick={() => onOpenNoteRef.current(openNote)}>
+                  <Trans>Open in Vault</Trans>
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
