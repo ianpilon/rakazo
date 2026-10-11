@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import {
@@ -467,6 +468,104 @@ export function DeleteItemDialog({
             }}
           >
             {deleting ? <Trans>Deleting…</Trans> : <Trans>Delete</Trans>}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+export function DeleteSectionDialog({
+  section,
+  botCount,
+  groupCount,
+  routineCount,
+  unassignedLabel,
+  onCancel,
+  onConfirm,
+}: {
+  section: { name: string };
+  botCount: number;
+  groupCount: number;
+  routineCount: number;
+  unassignedLabel: string;
+  onCancel: () => void;
+  onConfirm: (archive: boolean) => void;
+}) {
+  const [archive, setArchive] = useState(false);
+  const items = [
+    botCount > 0 ? plural(botCount, { one: "# bot", other: "# bots" }) : null,
+    groupCount > 0 ? plural(groupCount, { one: "# group", other: "# groups" }) : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const empty = botCount + groupCount === 0;
+
+  return (
+    <AlertDialog open onOpenChange={closeUnlessBusy(false, onCancel)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="break-words">
+            <Trans>Delete {section.name}?</Trans>
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {empty ? <Trans>The section is empty.</Trans> : <Trans>It holds {items}.</Trans>}
+            {routineCount > 0 && !empty
+              ? ` ${plural(routineCount, {
+                  one: "# scheduled routine stops if you archive them.",
+                  other: "# scheduled routines stop if you archive them.",
+                })}`
+              : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {empty ? null : (
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-[13.5px] text-foreground/75">
+              <Trans>What happens to them?</Trans>
+            </legend>
+            <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+              <input
+                type="radio"
+                name="delete-section"
+                checked={!archive}
+                onChange={() => setArchive(false)}
+              />
+              <span>
+                <span className="block text-[14px] text-foreground">
+                  <Trans>Move them to {unassignedLabel}</Trans>
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                  <Trans>They keep working, including their routines.</Trans>
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+              <input
+                type="radio"
+                name="delete-section"
+                checked={archive}
+                onChange={() => setArchive(true)}
+              />
+              <span>
+                <span className="block text-[14px] text-foreground">
+                  <Trans>Archive them too</Trans>
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                  <Trans>
+                    They stop, and their routines are turned off. You can restore them from
+                    Archived.
+                  </Trans>
+                </span>
+              </span>
+            </label>
+          </fieldset>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            <Trans>Cancel</Trans>
+          </AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => onConfirm(archive)}>
+            <Trans>Delete section</Trans>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

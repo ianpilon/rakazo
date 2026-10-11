@@ -266,6 +266,8 @@ export const appContract = {
         }),
       )
       .output(BotSectionSchema),
+    /** Deletes the section only; its bots and groups fall back to Unassigned. */
+    delete: oc.input(z.object({ sectionId: Id })).output(z.object({ ok: z.literal(true) })),
     board: oc.input(z.object({ sectionId: Id })).output(SectionBoardSchema),
     vaultGraph: oc.input(z.object({ sectionId: Id })).output(VaultGraphSchema),
   },

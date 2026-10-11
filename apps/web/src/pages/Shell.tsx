@@ -214,6 +214,7 @@ import {
   ClearConversationDialog,
   DeleteBotDialog,
   DeleteItemDialog,
+  DeleteSectionDialog,
   NewBotSectionDialog,
   NewSpaceDialog,
   PickerInfoDialog,
@@ -309,6 +310,26 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
   } catch {
     return new Set();
   }
+}
+
+/** Applies a section delete that is still inside its undo window. */
+function withoutPendingSection(
+  allBots: Bot[],
+  allGroups: Group[],
+  sections: BotSection[],
+  pending: { id: string; archive: boolean } | null,
+): { bots: Bot[]; groups: Group[]; botSections: BotSection[] } {
+  if (!pending) return { bots: allBots, groups: allGroups, botSections: sections };
+  const { id, archive } = pending;
+  return {
+    bots: archive
+      ? allBots.filter((bot) => bot.sectionId !== id)
+      : allBots.map((bot) => (bot.sectionId === id ? { ...bot, sectionId: null } : bot)),
+    groups: archive
+      ? allGroups.filter((group) => group.sectionId !== id)
+      : allGroups.map((group) => (group.sectionId === id ? { ...group, sectionId: null } : group)),
+    botSections: sections.filter((section) => section.id !== id),
+  };
 }
 
 export function ShellPage() {
@@ -514,11 +535,25 @@ export function ShellPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [deleteSectionTarget, setDeleteSectionTarget] = useState<{
+    id: string;
+    name: string;
+    routineCount: number;
+  } | null>(null);
+  /** A section delete waits SECTION_UNDO_MS before it reaches the server, so Undo needs no restore path. */
+  const [sectionUndo, setSectionUndo] = useState<{
+    id: string;
+    name: string;
+    archive: boolean;
+    hasMembers: boolean;
+  } | null>(null);
+  const sectionUndoRef = useRef<{ timer: number; commit: () => Promise<void> } | null>(null);
   /** Sidebar group keys look like `section:<id>` (optionally prefixed with the space). */
   const sectionIdFromKey = (key: string) => /(?:^|:)section:([^:]+)$/.exec(key)?.[1] ?? null;
   /** The built-in bucket for bots outside any section; renamed via a user preference. */
   const isUnassignedKey = (key: string) => key === "unassigned" || key.endsWith(":unassigned");
   const UNASSIGNED_RENAME_ID = "unassigned";
+  const SECTION_UNDO_MS = 8000;
   const [clearTarget, setClearTarget] = useState<
     { kind: "bot"; chat: Bot } | { kind: "group"; chat: Group } | null
   >(null);
@@ -1348,12 +1383,70 @@ export function ShellPage() {
     };
   }, [activeGroup?.id, groupId, notifyBrowserForEvent]);
 
+  async function openDeleteSection(id: string, name: string) {
+    // Only the routine count needs the server; a failure just hides that sentence.
+    const board = await rpc.botSections.board({ sectionId: id }).catch(() => null);
+    setDeleteSectionTarget({ id, name, routineCount: board?.routines.length ?? 0 });
+  }
+
+  async function flushSectionUndo() {
+    const pending = sectionUndoRef.current;
+    if (!pending) return;
+    sectionUndoRef.current = null;
+    window.clearTimeout(pending.timer);
+    try {
+      await pending.commit();
+    } finally {
+      setSectionUndo(null);
+    }
+  }
+
+  async function deleteSection(id: string, name: string, archive: boolean) {
+    await flushSectionUndo();
+    const memberBotIds = bots.filter((bot) => bot.sectionId === id).map((bot) => bot.id);
+    const memberGroupIds = groups
+      .filter((group) => group.sectionId === id)
+      .map((group) => group.id);
+    if (activeSection?.id === id) navigate("/app");
+    const commit = async () => {
+      try {
+        if (archive) {
+          for (const botId of memberBotIds) await rpc.bots.archive({ botId });
+          for (const groupId of memberGroupIds) await rpc.groups.archive({ groupId });
+        }
+        await rpc.botSections.delete({ sectionId: id });
+      } finally {
+        await refreshBots(true);
+      }
+    };
+    const timer = window.setTimeout(() => void flushSectionUndo(), SECTION_UNDO_MS);
+    sectionUndoRef.current = { timer, commit };
+    // The sidebar hides the section while this is set; polling cannot bring it back.
+    setSectionUndo({
+      id,
+      name,
+      archive,
+      hasMembers: memberBotIds.length + memberGroupIds.length > 0,
+    });
+  }
+
+  function undoSectionDelete() {
+    const pending = sectionUndoRef.current;
+    if (!pending) return;
+    sectionUndoRef.current = null;
+    window.clearTimeout(pending.timer);
+    // Nothing reached the server yet, so clearing the pending delete shows the section again.
+    setSectionUndo(null);
+  }
+
   const sidebarGroups = useMemo(() => {
     const needle = query.toLowerCase();
     const sidebarSpaces =
       spaces.length > 0
         ? spaces.map((space) =>
-            space.id === bootstrapMe?.spaceId ? { ...space, bots, groups, botSections } : space,
+            space.id === bootstrapMe?.spaceId
+              ? { ...space, ...withoutPendingSection(bots, groups, botSections, sectionUndo) }
+              : space,
           )
         : bootstrapMe
           ? [
@@ -1363,9 +1456,7 @@ export function ShellPage() {
                 isDefault: true,
                 hasContent: true,
                 canDelete: false,
-                bots,
-                groups,
-                botSections,
+                ...withoutPendingSection(bots, groups, botSections, sectionUndo),
               },
             ]
           : [];
@@ -1415,7 +1506,7 @@ export function ShellPage() {
         },
       ];
     });
-  }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+  }, [bootstrapMe, botSections, bots, groups, spaces, query, sectionUndo]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -2736,6 +2827,23 @@ export function ShellPage() {
                         {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
                           <button
                             type="button"
+                            aria-label={t`Actions for ${group.title}`}
+                            className="rounded-md p-1.5 text-muted-foreground/80 transition hover:bg-sidebar-accent hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                            onClick={(event) => {
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              setSectionMenu({
+                                id: sectionIdFromKey(group.key)!,
+                                name: group.title ?? "",
+                                position: { x: rect.left, y: rect.bottom },
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={14} aria-hidden="true" />
+                          </button>
+                        ) : null}
+                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
+                          <button
+                            type="button"
                             aria-expanded={!collapsed}
                             aria-label={
                               collapsed ? t`Expand ${group.title}` : t`Collapse ${group.title}`
@@ -3273,6 +3381,7 @@ export function ShellPage() {
                 ?.id ?? null
             }
             vaultNote={searchParams.get("note")}
+            onDelete={() => void openDeleteSection(activeSection.id, activeSection.name)}
             onOpenNote={(path) =>
               navigate(`/app/s/${activeSection.id}/vault?note=${encodeURIComponent(path)}`)
             }
@@ -3914,6 +4023,18 @@ export function ShellPage() {
                 <Pencil />
                 {t`Rename section`}
               </DropdownMenuItem>
+              {sectionMenu.id !== UNASSIGNED_RENAME_ID ? (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => {
+                    void openDeleteSection(sectionMenu.id, sectionMenu.name);
+                    setSectionMenu(null);
+                  }}
+                >
+                  <Trash2 />
+                  {t`Delete section…`}
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -3940,6 +4061,40 @@ export function ShellPage() {
               await refreshBots();
             }}
           />
+        ) : null}
+
+        {deleteSectionTarget ? (
+          <DeleteSectionDialog
+            section={deleteSectionTarget}
+            botCount={bots.filter((bot) => bot.sectionId === deleteSectionTarget.id).length}
+            groupCount={groups.filter((group) => group.sectionId === deleteSectionTarget.id).length}
+            routineCount={deleteSectionTarget.routineCount}
+            unassignedLabel={bootstrapMe?.unassignedSectionLabel || t`Unassigned`}
+            onCancel={() => setDeleteSectionTarget(null)}
+            onConfirm={(archive) => {
+              const target = deleteSectionTarget;
+              setDeleteSectionTarget(null);
+              void deleteSection(target.id, target.name, archive);
+            }}
+          />
+        ) : null}
+
+        {sectionUndo ? (
+          <div
+            role="status"
+            className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-xl border border-border bg-popover px-4 py-2.5 text-[13.5px] text-popover-foreground shadow-lg"
+          >
+            <span>
+              {sectionUndo.archive && sectionUndo.hasMembers ? (
+                <Trans>Deleted {sectionUndo.name} and archived its bots</Trans>
+              ) : (
+                <Trans>Deleted {sectionUndo.name}</Trans>
+              )}
+            </span>
+            <Button size="sm" variant="outline" onClick={undoSectionDelete}>
+              <Trans>Undo</Trans>
+            </Button>
+          </div>
         ) : null}
 
         {deleteTarget ? (

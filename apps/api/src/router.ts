@@ -1356,6 +1356,10 @@ export function createRouter(deps: RouterDeps) {
       update: authed.botSections.update.handler(async ({ context, input }) =>
         repos.updateBotSection(context.actor, input),
       ),
+      delete: authed.botSections.delete.handler(async ({ context, input }) => {
+        await repos.deleteBotSection(context.actor, input.sectionId);
+        return { ok: true as const };
+      }),
       board: authed.botSections.board.handler(async ({ context, input }) =>
         loadSectionBoard(deps.prisma, context.actor, input.sectionId),
       ),

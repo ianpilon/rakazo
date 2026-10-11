@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, BotSection, Group, SectionBoardRun } from "@rakazo/contracts";
 import { BOT_SECTION_GOAL_MAX_LENGTH } from "@rakazo/contracts";
 import { BotAvatar, Button, Textarea } from "@rakazo/ui-web";
-import { Users } from "lucide-react";
+import { Trash2, Users } from "lucide-react";
 import { useId, useState } from "react";
 import { SectionBoard } from "./SectionBoard";
 import { SectionGraph } from "./SectionGraph";
@@ -23,6 +23,7 @@ export function SectionOverview({
   vaultBotId,
   vaultNote,
   onOpenNote,
+  onDelete,
 }: {
   section: BotSection;
   bots: Bot[];
@@ -37,6 +38,7 @@ export function SectionOverview({
   /** Note to open on the Vault tab, from a graph click. */
   vaultNote: string | null;
   onOpenNote: (path: string) => void;
+  onDelete: () => void;
 }) {
   const { t } = useLingui();
   const goalId = useId();
@@ -51,9 +53,15 @@ export function SectionOverview({
       <div
         className={`mx-auto w-full px-6 py-8 ${view === "goal" ? "max-w-[640px]" : "max-w-[1100px]"}`}
       >
-        <h1 className="text-[22px] font-medium text-foreground" dir="auto">
-          {section.name}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="min-w-0 break-words text-[22px] font-medium text-foreground" dir="auto">
+            {section.name}
+          </h1>
+          <Button variant="outline" size="sm" onClick={onDelete}>
+            <Trash2 size={14} aria-hidden="true" />
+            <Trans>Delete section</Trans>
+          </Button>
+        </div>
         <div role="tablist" className="mt-4 flex gap-1 border-b border-border">
           {(["goal", "board", ...(vaultBotId ? (["vault", "graph"] as const) : [])] as const).map(
             (tab) => (

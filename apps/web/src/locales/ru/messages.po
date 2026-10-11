@@ -3834,3 +3834,64 @@ msgstr "Can let other bots send texts"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "In Twilio, set the number's messaging webhook to {0}"
 msgstr "In Twilio, set the number's messaging webhook to {0}"
+
+#: src/pages/shell/dialogs.tsx
+msgid "{botCount, plural, one {# bot} other {# bots}}"
+msgstr "{botCount, plural, one {# bot} other {# bots}}"
+
+#: src/pages/shell/dialogs.tsx
+msgid "{groupCount, plural, one {# group} other {# groups}}"
+msgstr "{groupCount, plural, one {# group} other {# groups}}"
+
+#: src/pages/shell/dialogs.tsx
+msgid "{routineCount, plural, one {# scheduled routine stops if you archive them.} other {# scheduled routines stop if you archive them.}}"
+msgstr "{routineCount, plural, one {# scheduled routine stops if you archive them.} other {# scheduled routines stop if you archive them.}}"
+
+#: src/pages/shell/dialogs.tsx
+msgid "Archive them too"
+msgstr "Archive them too"
+
+#: src/pages/SectionOverview.tsx
+#: src/pages/shell/dialogs.tsx
+msgid "Delete section"
+msgstr "Delete section"
+
+#: src/pages/Shell.tsx
+msgid "Delete section…"
+msgstr "Delete section…"
+
+#: src/pages/Shell.tsx
+msgid "Deleted {0}"
+msgstr "Deleted {0}"
+
+#: src/pages/Shell.tsx
+msgid "Deleted {0} and archived its bots"
+msgstr "Deleted {0} and archived its bots"
+
+#: src/pages/shell/dialogs.tsx
+msgid "It holds {items}."
+msgstr "It holds {items}."
+
+#: src/pages/shell/dialogs.tsx
+msgid "Move them to {unassignedLabel}"
+msgstr "Move them to {unassignedLabel}"
+
+#: src/pages/shell/dialogs.tsx
+msgid "The section is empty."
+msgstr "The section is empty."
+
+#: src/pages/shell/dialogs.tsx
+msgid "They keep working, including their routines."
+msgstr "They keep working, including their routines."
+
+#: src/pages/shell/dialogs.tsx
+msgid "They stop, and their routines are turned off. You can restore them from Archived."
+msgstr "They stop, and their routines are turned off. You can restore them from Archived."
+
+#: src/pages/Shell.tsx
+msgid "Undo"
+msgstr "Undo"
+
+#: src/pages/shell/dialogs.tsx
+msgid "What happens to them?"
+msgstr "What happens to them?"

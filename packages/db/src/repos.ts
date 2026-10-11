@@ -285,6 +285,14 @@ export function createRepos(prisma: PrismaClient) {
       return serializeBotSection(section);
     },
 
+    async deleteBotSection(actor: Actor, sectionId: string): Promise<void> {
+      // Bot.sectionId and ChatGroup.sectionId are onDelete: SetNull, so members move to Unassigned.
+      const deleted = await prisma.botSection.deleteMany({
+        where: { id: sectionId, spaceId: actor.spaceId, userId: actor.userId },
+      });
+      if (deleted.count === 0) throw new IsolationError();
+    },
+
     async listBots(actor: Actor, options: { archived?: boolean } = {}): Promise<Bot[]> {
       const bots = await prisma.bot.findMany({
         where: {
