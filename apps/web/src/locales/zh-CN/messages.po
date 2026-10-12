@@ -3029,9 +3029,6 @@ msgstr ""
 msgid "Saving…"
 msgstr "正在保存…"
 
-#: src/pages/CallView.tsx:255
-msgid "Say something. Silence sends it."
-msgstr "说点什么。静音即发送。"
 
 #: src/pages/CallView.tsx:41
 #: src/pages/CallView.tsx:42
@@ -3262,9 +3259,6 @@ msgstr "软件更新"
 msgid "Space default"
 msgstr "工作区默认"
 
-#: src/pages/CallView.tsx:267
-msgid "Space interrupts · Esc hangs up"
-msgstr "空格键打断 · Esc 挂断"
 
 #: src/pages/shell/dialogs.tsx:131
 msgid "Spaces"
@@ -3288,9 +3282,6 @@ msgstr "仅朗读"
 msgid "Speak this reply"
 msgstr "朗读这条回复"
 
-#: src/pages/CallView.tsx:249
-msgid "Speaking…"
-msgstr "正在朗读…"
 
 #: src/components/teach/TeachComputerOverlay.tsx:250
 msgid "Start recording"
@@ -3900,3 +3891,51 @@ msgstr "Undo"
 #: src/pages/shell/dialogs.tsx
 msgid "What happens to them?"
 msgstr "What happens to them?"
+
+#: src/pages/CallView.tsx
+msgid "Thinking…"
+msgstr "Thinking…"
+
+#: src/pages/CallView.tsx
+msgid "Speaking"
+msgstr "Speaking"
+
+#: src/pages/CallView.tsx
+msgid "Muted"
+msgstr "Muted"
+
+#: src/pages/CallView.tsx
+msgid "Call with {botName}"
+msgstr "Call with {botName}"
+
+#: src/pages/CallView.tsx
+msgid "Choose a voice"
+msgstr "Choose a voice"
+
+#: src/pages/CallView.tsx
+msgid "Tap to interrupt"
+msgstr "Tap to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "(background, ignored)"
+msgstr "(background, ignored)"
+
+#: src/pages/CallView.tsx
+msgid "Just talk, or tap the wave, to interrupt"
+msgstr "Just talk, or tap the wave, to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Tap the wave or press Space to interrupt"
+msgstr "Tap the wave or press Space to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Unmute"
+msgstr "Unmute"
+
+#: src/pages/CallView.tsx
+msgid "Mute"
+msgstr "Mute"
+
+#: src/pages/CallView.tsx
+msgid "End call"
+msgstr "End call"

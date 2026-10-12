@@ -16,6 +16,8 @@ import { XIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { rpc } from "../lib/rpc";
 
+const LOCAL_VOICE_PROVIDER = "local";
+const LOCAL_VOICE_PLACEHOLDER_KEY = "local-voice-server";
 export function VoiceSettingsOverlay({
   onClose,
   embedded = false,
@@ -90,15 +92,18 @@ export function VoiceSettingsOverlay({
     [voices, voiceId],
   );
 
+  // A self-hosted voice server needs no key; the credential row just records the choice.
+  const keyless = selected?.id === LOCAL_VOICE_PROVIDER;
+
   async function connectKey() {
-    if (!selected || !apiKey.trim()) return;
+    if (!selected || (!keyless && !apiKey.trim())) return;
     setError(null);
     setNotice(null);
     markPending("connect");
     try {
       await rpc.voice.connect({
         provider: selected.id,
-        apiKey: apiKey.trim(),
+        apiKey: keyless ? LOCAL_VOICE_PLACEHOLDER_KEY : apiKey.trim(),
         voiceId: voiceId || undefined,
       });
       setApiKey("");
@@ -218,33 +223,37 @@ export function VoiceSettingsOverlay({
           {notice ? <p className="mb-4 text-sm text-success">{notice}</p> : null}
           {selected ? (
             <>
-              <Field className="mt-5">
-                <FieldLabel htmlFor={apiKeyId}>
-                  <Trans>API key</Trans>
-                </FieldLabel>
-                <Input
-                  id={apiKeyId}
-                  type="password"
-                  autoComplete="new-password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder={credential ? t`Paste a replacement key` : t`Paste your API key`}
-                />
-              </Field>
-              <Button
-                type="button"
-                className="mt-3"
-                disabled={busy || apiKey.trim().length < 8}
-                onClick={() => void connectKey()}
-              >
-                {pending === "connect" ? (
-                  <Trans>Connecting…</Trans>
-                ) : credential ? (
-                  <Trans>Replace key</Trans>
-                ) : (
-                  <Trans>Connect</Trans>
-                )}
-              </Button>
+              {keyless ? null : (
+                <Field className="mt-5">
+                  <FieldLabel htmlFor={apiKeyId}>
+                    <Trans>API key</Trans>
+                  </FieldLabel>
+                  <Input
+                    id={apiKeyId}
+                    type="password"
+                    autoComplete="new-password"
+                    value={apiKey}
+                    onChange={(event) => setApiKey(event.target.value)}
+                    placeholder={credential ? t`Paste a replacement key` : t`Paste your API key`}
+                  />
+                </Field>
+              )}
+              {keyless && credential ? null : (
+                <Button
+                  type="button"
+                  className={keyless ? "mt-5" : "mt-3"}
+                  disabled={busy || (!keyless && apiKey.trim().length < 8)}
+                  onClick={() => void connectKey()}
+                >
+                  {pending === "connect" ? (
+                    <Trans>Connecting…</Trans>
+                  ) : credential ? (
+                    <Trans>Replace key</Trans>
+                  ) : (
+                    <Trans>Connect</Trans>
+                  )}
+                </Button>
+              )}
 
               {credential ? (
                 <>

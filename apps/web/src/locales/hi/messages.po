@@ -3029,9 +3029,6 @@ msgstr ""
 msgid "Saving…"
 msgstr "सहेजा जा रहा है…"
 
-#: src/pages/CallView.tsx:255
-msgid "Say something. Silence sends it."
-msgstr "कुछ बोलें। चुप्पी होते ही भेज दिया जाएगा।"
 
 #: src/pages/CallView.tsx:41
 #: src/pages/CallView.tsx:42
@@ -3262,9 +3259,6 @@ msgstr ""
 msgid "Space default"
 msgstr "स्पेस डिफ़ॉल्ट"
 
-#: src/pages/CallView.tsx:267
-msgid "Space interrupts · Esc hangs up"
-msgstr "स्पेस से बीच में रोकें · Esc से कॉल समाप्त करें"
 
 #: src/pages/shell/dialogs.tsx:131
 msgid "Spaces"
@@ -3288,9 +3282,6 @@ msgstr "केवल बोलें"
 msgid "Speak this reply"
 msgstr "यह उत्तर बोलकर सुनाएं"
 
-#: src/pages/CallView.tsx:249
-msgid "Speaking…"
-msgstr "बोल रहा है…"
 
 #: src/components/teach/TeachComputerOverlay.tsx:250
 msgid "Start recording"
@@ -3900,3 +3891,51 @@ msgstr "Undo"
 #: src/pages/shell/dialogs.tsx
 msgid "What happens to them?"
 msgstr "What happens to them?"
+
+#: src/pages/CallView.tsx
+msgid "Thinking…"
+msgstr "Thinking…"
+
+#: src/pages/CallView.tsx
+msgid "Speaking"
+msgstr "Speaking"
+
+#: src/pages/CallView.tsx
+msgid "Muted"
+msgstr "Muted"
+
+#: src/pages/CallView.tsx
+msgid "Call with {botName}"
+msgstr "Call with {botName}"
+
+#: src/pages/CallView.tsx
+msgid "Choose a voice"
+msgstr "Choose a voice"
+
+#: src/pages/CallView.tsx
+msgid "Tap to interrupt"
+msgstr "Tap to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "(background, ignored)"
+msgstr "(background, ignored)"
+
+#: src/pages/CallView.tsx
+msgid "Just talk, or tap the wave, to interrupt"
+msgstr "Just talk, or tap the wave, to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Tap the wave or press Space to interrupt"
+msgstr "Tap the wave or press Space to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Unmute"
+msgstr "Unmute"
+
+#: src/pages/CallView.tsx
+msgid "Mute"
+msgstr "Mute"
+
+#: src/pages/CallView.tsx
+msgid "End call"
+msgstr "End call"

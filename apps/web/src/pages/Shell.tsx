@@ -3844,6 +3844,23 @@ export function ShellPage() {
           </div>
         ) : null}
       </aside>
+      {callOpen && active ? (
+        <Suspense fallback={null}>
+          <CallView
+            key={active.id}
+            botId={active.id}
+            botName={active.name}
+            voiceId={active.voiceId || voiceStatus?.voiceId || ""}
+            onVoiceSaved={() => void refreshBots()}
+            transcribe={Boolean(voiceStatus?.transcribe)}
+            snapshot={activeSnapshot}
+            onSend={sendMessage}
+            onFollowUp={followUpMessage}
+            onAnswer={answerMessage}
+            onClose={() => setCallOpen(false)}
+          />
+        </Suspense>
+      ) : null}
 
       <Suspense fallback={null}>
         {contextChat && botMenu ? (
@@ -4293,18 +4310,6 @@ export function ShellPage() {
               resolveTranscriptBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR
             }
             onClose={() => setPeerConversation(null)}
-          />
-        ) : null}
-        {callOpen && active ? (
-          <CallView
-            botId={active.id}
-            botName={active.name}
-            transcribe={Boolean(voiceStatus?.transcribe)}
-            snapshot={activeSnapshot}
-            onSend={sendMessage}
-            onFollowUp={followUpMessage}
-            onAnswer={answerMessage}
-            onClose={() => setCallOpen(false)}
           />
         ) : null}
       </Suspense>

@@ -2,6 +2,7 @@ import type { VoiceProvider } from "@rakazo/adapter-kit";
 import { CartesiaVoiceProvider } from "./cartesia-voice.js";
 import { ElevenLabsVoiceProvider } from "./elevenlabs-voice.js";
 import { FishAudioVoiceProvider } from "./fish-audio-voice.js";
+import { LocalVoiceProvider, localVoiceBaseUrl } from "./local-voice.js";
 import { OpenAIVoiceProvider } from "./openai-voice.js";
 import { SCRIPTED_VOICE_CATALOG_ENTRY, ScriptedVoiceProvider } from "./scripted-voice.js";
 
@@ -34,26 +35,46 @@ export const VOICE_CATALOG = [
 
 export { SCRIPTED_VOICE_CATALOG_ENTRY };
 
+/** Offered only when the operator points RAKAZO_LOCAL_VOICE_URL at a voice server. */
+export const LOCAL_VOICE_CATALOG_ENTRY = {
+  id: "local",
+  name: "Your voice server",
+  description: "Voices from your own machine. No account or key needed.",
+  transcribe: false,
+} as const;
+
+function localVoiceEnabled() {
+  try {
+    return Boolean(localVoiceBaseUrl());
+  } catch {
+    return false;
+  }
+}
+
 export type HostedVoiceProviderId = (typeof VOICE_CATALOG)[number]["id"];
-export type VoiceProviderId = HostedVoiceProviderId | "scripted";
+export type VoiceProviderId = HostedVoiceProviderId | "scripted" | "local";
 
 export function scriptedVoiceEnabled() {
   return process.env.AGENT_RUNTIME === "scripted";
 }
 
 export function listVoiceCatalog() {
-  return scriptedVoiceEnabled()
-    ? [...VOICE_CATALOG, SCRIPTED_VOICE_CATALOG_ENTRY]
-    : [...VOICE_CATALOG];
+  return [
+    ...(localVoiceEnabled() ? [LOCAL_VOICE_CATALOG_ENTRY] : []),
+    ...VOICE_CATALOG,
+    ...(scriptedVoiceEnabled() ? [SCRIPTED_VOICE_CATALOG_ENTRY] : []),
+  ];
 }
 
 export function voiceCatalogEntry(id: string) {
   if (id === SCRIPTED_VOICE_CATALOG_ENTRY.id) return SCRIPTED_VOICE_CATALOG_ENTRY;
+  if (id === LOCAL_VOICE_CATALOG_ENTRY.id) return LOCAL_VOICE_CATALOG_ENTRY;
   return VOICE_CATALOG.find((entry) => entry.id === id);
 }
 
 export function isVoiceProviderId(value: string): value is VoiceProviderId {
   if (value === "scripted") return scriptedVoiceEnabled();
+  if (value === "local") return localVoiceEnabled();
   return VOICE_CATALOG.some((entry) => entry.id === value);
 }
 
@@ -68,6 +89,8 @@ export function createVoiceProvider(kind: string): VoiceProvider {
       return new CartesiaVoiceProvider();
     case "fish-audio":
       return new FishAudioVoiceProvider();
+    case "local":
+      return new LocalVoiceProvider();
     case "scripted":
       if (!scriptedVoiceEnabled()) break;
       return new ScriptedVoiceProvider();

@@ -32,6 +32,8 @@ export class Speaker {
   private objectUrl: string | null = null;
   private settlePlayback: ((finished: boolean) => void) | null = null;
   private request: AbortController | null = null;
+  /** The call panel taps each clip it plays, to draw the voice wave. */
+  audioTap: ((audio: HTMLAudioElement) => void) | null = null;
 
   subscribe(fn: (s: SpeechSnapshot) => void): () => void {
     this.watchers.add(fn);
@@ -198,6 +200,7 @@ export class Speaker {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       this.audio = audio;
+      this.audioTap?.(audio);
       this.objectUrl = url;
       let settled = false;
       const done = (ok: boolean) => {

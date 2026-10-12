@@ -1,16 +1,31 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
+import type { ThreadMessage, ThreadSnapshot, VoiceInfo } from "@rakazo/contracts";
 import { isSecretAskBlock, narrateTool, speechFromBlocks, spokenDecision } from "@rakazo/core";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@rakazo/ui-web";
+import { Mic, MicOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { dictation } from "../lib/dictation";
+import { BACKCHANNEL, Ears, type EarsEvent } from "../lib/ears";
+import { rpc } from "../lib/rpc";
 import { speaker } from "../lib/tts";
 
 type Phase = "listening" | "thinking" | "speaking";
 
+// The RTL Command Center's voice panel wave (asstWaveLoop): the colour is the state.
+const WAVE_BARS = 36;
+const WAVE_LISTENING = "#34d399";
+const WAVE_REPLYING = "#818cf8";
+const WAVE_MUTED = "#f87171";
+
+/**
+ * Voice call as a side panel beside the conversation, the same panel as the RTL Command
+ * Center and Classroom: a wave whose colour is the state, the words heard or spoken, a voice
+ * picker, mute and close. With the self-hosted ears, talking over a reply interrupts it.
+ */
 export function CallView({
   botId,
   botName,
+  voiceId,
+  onVoiceSaved,
   transcribe,
   snapshot,
   onSend,
@@ -20,6 +35,8 @@ export function CallView({
 }: {
   botId: string;
   botName: string;
+  voiceId: string;
+  onVoiceSaved: () => void;
   transcribe: boolean;
   snapshot: ThreadSnapshot | null;
   onSend: (text: string) => Promise<void>;
@@ -36,6 +53,18 @@ export function CallView({
   const spokenMessage = useRef<string | null>(null);
   const narrated = useRef(new Set<string>());
   const closing = useRef(false);
+  // With the self-hosted ears the mic stays open for the whole call, so talking interrupts a reply.
+  const ears = useRef(new Ears());
+  const [earsOn, setEarsOn] = useState(false);
+  const earsOnRef = useRef(false);
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
+  const [ignored, setIgnored] = useState(false);
+  const ignoredTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [voices, setVoices] = useState<VoiceInfo[]>([]);
+  const [voice, setVoice] = useState(voiceId);
+  const canvas = useRef<HTMLCanvasElement | null>(null);
+  const outAnalyser = useRef<AnalyserNode | null>(null);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
   const askPromptRef = useRef(t`Say yes or no, or answer in a sentence.`);
@@ -50,6 +79,7 @@ export function CallView({
 
   function hangUp() {
     closing.current = true;
+    ears.current.stop();
     dictation.stop("cancel");
     speaker.stop();
     onClose();
@@ -57,8 +87,32 @@ export function CallView({
 
   function interrupt() {
     if (phaseRef.current === "speaking") speaker.stop();
-    else dictation.stop("cancel");
+    else if (!earsOnRef.current) dictation.stop("cancel");
     void listen();
+  }
+
+  function toggleMute() {
+    const next = !mutedRef.current;
+    mutedRef.current = next;
+    setMuted(next);
+    ears.current.muted = next;
+    if (next) {
+      ears.current.reset();
+      dictation.stop("cancel");
+      setHeard("");
+    } else if (phaseRef.current === "listening") {
+      void listen();
+    }
+  }
+
+  async function pickVoice(next: string) {
+    setVoice(next);
+    try {
+      await rpc.bots.update({ botId, voiceId: next || null });
+      onVoiceSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t`Could not save that voice`);
+    }
   }
 
   async function listen() {
@@ -66,6 +120,20 @@ export function CallView({
     if (pendingSecretAsk(snapshotRef.current)) {
       dictation.stop("cancel");
       setCallPhase("listening");
+      setHeard("");
+      return;
+    }
+    if (mutedRef.current) {
+      // Muted stays muted until the user unmutes; nothing is heard meanwhile.
+      setCallPhase("listening");
+      return;
+    }
+    if (earsOnRef.current) {
+      // The ears are always listening; while a run is still working, show that instead.
+      const run = snapshotRef.current?.run;
+      setCallPhase(
+        run && ["running", "queued", "leased"].includes(run.status) ? "thinking" : "listening",
+      );
       setHeard("");
       return;
     }
@@ -88,7 +156,7 @@ export function CallView({
       void listen();
       return;
     }
-    dictation.stop("submit");
+    if (!earsOnRef.current) dictation.stop("submit");
     const current = snapshotRef.current;
     if (pendingSecretAsk(current)) {
       setHeard("");
@@ -115,6 +183,29 @@ export function CallView({
     }
   }
 
+  function onEars(event: EarsEvent) {
+    if (closing.current) return;
+    const speaking = phaseRef.current === "speaking";
+    if (event.type === "partial") {
+      if (!speaking) setHeard(event.text);
+      // A real sentence (2+ words, not "mm-hm") cuts the reply off; the final then asks.
+      else if (event.text.split(/\s+/).length >= 2 && !BACKCHANNEL.test(event.text)) speaker.stop();
+    } else if (event.type === "dropped") {
+      setIgnored(true);
+      clearTimeout(ignoredTimer.current);
+      ignoredTimer.current = setTimeout(() => setIgnored(false), 2500);
+    } else if (event.type === "final" && event.text) {
+      if (event.stop) {
+        speaker.stop();
+        setHeard("");
+        return;
+      }
+      if (speaking && BACKCHANNEL.test(event.text)) return;
+      speaker.stop();
+      void handleTranscript(event.text);
+    }
+  }
+
   useEffect(() => {
     closing.current = false;
     spokenMessage.current = null;
@@ -135,9 +226,23 @@ export function CallView({
       }
       if (state.error) setError(state.error);
     });
-    void listen();
+    void (async () => {
+      const ok = await ears.current.start(onEars, () => {
+        earsOnRef.current = false;
+        setEarsOn(false);
+        if (!closing.current) void listen();
+      });
+      if (closing.current) {
+        ears.current.stop();
+        return;
+      }
+      earsOnRef.current = ok;
+      setEarsOn(ok);
+      void listen();
+    })();
     return () => {
       closing.current = true;
+      ears.current.stop();
       unsubSpeech();
       unsubDictation();
       dictation.stop("cancel");
@@ -224,50 +329,179 @@ export function CallView({
     setHeard("");
   }, [snapshot]);
 
+  // The bot's voice, tapped for the wave while it speaks.
+  useEffect(() => {
+    const context = new AudioContext();
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.connect(context.destination);
+    outAnalyser.current = analyser;
+    speaker.audioTap = (audio) => {
+      void context.resume().catch(() => {});
+      context.createMediaElementSource(audio).connect(analyser);
+    };
+    return () => {
+      speaker.audioTap = null;
+      outAnalyser.current = null;
+      void context.close().catch(() => {});
+    };
+  }, []);
+
+  useEffect(() => {
+    void rpc.voice
+      .voices({})
+      .then(setVoices)
+      .catch(() => setVoices([]));
+  }, []);
+
+  // The wave: green follows your voice while it listens, indigo follows the reply, red is muted.
+  useEffect(() => {
+    const bars = new Float32Array(WAVE_BARS);
+    const buffer = new Float32Array(1024);
+    let micFloor = 0.01;
+    let frame = 0;
+    const draw = () => {
+      frame = requestAnimationFrame(draw);
+      const c = canvas.current;
+      const g = c?.getContext("2d");
+      if (!c || !g) return;
+      const speaking = phaseRef.current === "speaking";
+      const analyser = mutedRef.current
+        ? null
+        : speaking
+          ? outAnalyser.current
+          : ears.current.analyser;
+      let gain = 0;
+      let floor = 0;
+      if (analyser) {
+        analyser.getFloatTimeDomainData(buffer);
+        gain = speaking ? 4.5 : 7;
+        if (!speaking) {
+          let energy = 0;
+          for (const x of buffer) energy += x * x;
+          const rms = Math.sqrt(energy / buffer.length);
+          micFloor = rms < micFloor ? rms : micFloor * 1.002; // the room's own hum, tracked slowly
+          floor = Math.max(micFloor * 2, 0.006);
+        }
+      }
+      const per = Math.floor(buffer.length / WAVE_BARS);
+      for (let i = 0; i < WAVE_BARS; i++) {
+        let energy = 0;
+        if (analyser) for (let k = i * per; k < (i + 1) * per; k++) energy += (buffer[k] ?? 0) ** 2;
+        const level = analyser
+          ? Math.min(1, Math.max(0, Math.sqrt(energy / per) - floor) * gain)
+          : 0;
+        const bar = bars[i] ?? 0;
+        bars[i] = level > bar ? bar * 0.35 + level * 0.65 : bar * 0.8 + level * 0.2; // fast up, slower down
+      }
+      const width = c.width;
+      const height = c.height;
+      g.clearRect(0, 0, width, height);
+      const radius = width * 0.46;
+      const gap = (2 * radius) / WAVE_BARS;
+      const barWidth = gap * 0.55;
+      g.fillStyle = mutedRef.current
+        ? WAVE_MUTED
+        : phaseRef.current === "listening"
+          ? WAVE_LISTENING
+          : WAVE_REPLYING;
+      for (let i = 0; i < WAVE_BARS; i++) {
+        const x = width / 2 - radius + gap * i + (gap - barWidth) / 2;
+        const t = (i + 0.5) / WAVE_BARS;
+        const envelope = 0.35 + 0.65 * Math.sqrt(1 - (2 * t - 1) ** 2);
+        const h = Math.max(barWidth, (bars[i] ?? 0) * height * 0.9 * envelope);
+        g.beginPath();
+        g.roundRect(x, height / 2 - h / 2, barWidth, h, barWidth / 2);
+        g.fill();
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const state = muted
+    ? t`Muted`
+    : phase === "listening"
+      ? t`Listening…`
+      : phase === "speaking"
+        ? t`Speaking`
+        : t`Thinking…`;
+  const words = phase === "speaking" ? caption : heard;
+
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) hangUp();
-      }}
+    <aside
+      data-testid="call-view"
+      aria-label={t`Call with ${botName}`}
+      className="absolute inset-y-0 end-0 z-30 flex w-full flex-col items-center border-s border-sidebar-border bg-background px-5 pt-4 pb-5 md:relative md:w-[400px] md:shrink-0"
     >
-      <DialogContent
-        data-testid="call-view"
-        showCloseButton={false}
-        className="max-w-[420px] rounded-3xl p-6 text-center sm:max-w-[420px]"
-      >
-        <DialogHeader className="items-center gap-2">
-          <div className="text-[13px] uppercase tracking-[0.12em] text-muted-foreground/80">
-            <Trans>Call</Trans>
-          </div>
-          <DialogTitle className="text-[22px]">{botName}</DialogTitle>
-        </DialogHeader>
-        <div className="mt-1 text-[15px] text-foreground/75">
-          {phase === "listening" ? (
-            <Trans>Listening…</Trans>
-          ) : phase === "speaking" ? (
-            <Trans>Speaking…</Trans>
-          ) : (
-            <Trans>Working…</Trans>
-          )}
-        </div>
-        <p className="min-h-[3.2em] text-[14.5px] leading-[1.5] text-muted-foreground">
-          {phase === "listening" ? heard || t`Say something. Silence sends it.` : caption}
+      <div className="flex w-full items-center justify-between gap-3">
+        <span className="truncate text-[13.5px] text-muted-foreground">{botName}</span>
+        <select
+          aria-label={t`Voice`}
+          value={voice}
+          onChange={(event) => void pickVoice(event.target.value)}
+          className="h-8 max-w-[60%] rounded-md border border-border bg-background px-2 text-[13px] text-foreground"
+        >
+          {voice ? null : <option value="">{t`Choose a voice`}</option>}
+          {voices.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={interrupt}
+          title={t`Tap to interrupt`}
+          aria-label={t`Tap to interrupt`}
+          className="h-32 w-[220px] cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <canvas ref={canvas} width={440} height={256} className="block h-full w-full" />
+        </button>
+        <div className="text-[17px] font-semibold text-foreground">{state}</div>
+        <p className="min-h-[3em] max-w-full px-1.5 text-center text-[14.5px] leading-[1.55] text-muted-foreground">
+          {words}
         </p>
-        {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
-        <div className="mt-2 flex justify-center gap-3">
-          <Button variant="outline" className="rounded-full" onClick={interrupt}>
-            <Trans>Interrupt</Trans>
-          </Button>
-          <Button variant="destructive" className="rounded-full" onClick={hangUp}>
-            <Trans>Hang up</Trans>
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground/80">
-          <Trans>Space interrupts · Esc hangs up</Trans>
+        <p className="min-h-[1.2em] text-[12px] text-muted-foreground/80">
+          {ignored ? t`(background, ignored)` : ""}
         </p>
-      </DialogContent>
-    </Dialog>
+        {error ? <p className="text-center text-[13px] text-destructive">{error}</p> : null}
+      </div>
+      <p className="mb-3 text-center text-[12px] text-muted-foreground">
+        {earsOn ? (
+          <Trans>Just talk, or tap the wave, to interrupt</Trans>
+        ) : (
+          <Trans>Tap the wave or press Space to interrupt</Trans>
+        )}
+      </p>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={toggleMute}
+          title={muted ? t`Unmute` : t`Mute`}
+          aria-label={muted ? t`Unmute` : t`Mute`}
+          aria-pressed={muted}
+          className={`flex size-11 items-center justify-center rounded-full border ${
+            muted
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-border text-foreground hover:bg-accent"
+          }`}
+        >
+          {muted ? <MicOff size={18} aria-hidden="true" /> : <Mic size={18} aria-hidden="true" />}
+        </button>
+        <button
+          type="button"
+          onClick={hangUp}
+          title={t`End call`}
+          aria-label={t`End call`}
+          className="flex size-11 items-center justify-center rounded-full border border-border text-foreground hover:bg-accent"
+        >
+          <X size={18} aria-hidden="true" />
+        </button>
+      </div>
+    </aside>
   );
 }
 

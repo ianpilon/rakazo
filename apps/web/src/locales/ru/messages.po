@@ -3020,9 +3020,6 @@ msgstr "Сохранение..."
 msgid "Saving…"
 msgstr "Сохранение…"
 
-#: src/pages/CallView.tsx:255
-msgid "Say something. Silence sends it."
-msgstr "Скажите что-нибудь. После паузы сообщение отправится."
 
 #: src/pages/CallView.tsx:41
 #: src/pages/CallView.tsx:42
@@ -3253,9 +3250,6 @@ msgstr "Обновление программного обеспечения"
 msgid "Space default"
 msgstr "Пространство по умолчанию"
 
-#: src/pages/CallView.tsx:267
-msgid "Space interrupts · Esc hangs up"
-msgstr "Пробел прерывает · Esc завершает звонок"
 
 #: src/pages/shell/dialogs.tsx:131
 msgid "Spaces"
@@ -3279,9 +3273,6 @@ msgstr "Только озвучить"
 msgid "Speak this reply"
 msgstr "Озвучить этот ответ"
 
-#: src/pages/CallView.tsx:249
-msgid "Speaking…"
-msgstr "Озвучивание…"
 
 #: src/components/teach/TeachComputerOverlay.tsx:250
 msgid "Start recording"
@@ -3891,3 +3882,51 @@ msgstr "Undo"
 #: src/pages/shell/dialogs.tsx
 msgid "What happens to them?"
 msgstr "What happens to them?"
+
+#: src/pages/CallView.tsx
+msgid "Thinking…"
+msgstr "Thinking…"
+
+#: src/pages/CallView.tsx
+msgid "Speaking"
+msgstr "Speaking"
+
+#: src/pages/CallView.tsx
+msgid "Muted"
+msgstr "Muted"
+
+#: src/pages/CallView.tsx
+msgid "Call with {botName}"
+msgstr "Call with {botName}"
+
+#: src/pages/CallView.tsx
+msgid "Choose a voice"
+msgstr "Choose a voice"
+
+#: src/pages/CallView.tsx
+msgid "Tap to interrupt"
+msgstr "Tap to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "(background, ignored)"
+msgstr "(background, ignored)"
+
+#: src/pages/CallView.tsx
+msgid "Just talk, or tap the wave, to interrupt"
+msgstr "Just talk, or tap the wave, to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Tap the wave or press Space to interrupt"
+msgstr "Tap the wave or press Space to interrupt"
+
+#: src/pages/CallView.tsx
+msgid "Unmute"
+msgstr "Unmute"
+
+#: src/pages/CallView.tsx
+msgid "Mute"
+msgstr "Mute"
+
+#: src/pages/CallView.tsx
+msgid "End call"
+msgstr "End call"
