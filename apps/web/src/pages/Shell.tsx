@@ -155,6 +155,8 @@ import {
 } from "../lib/browser-notifications";
 import { loadComputerScreen } from "../lib/computer-screen";
 import { desktopBridge } from "../lib/desktop";
+import { dictation } from "../lib/dictation";
+import { Ears, FILLER } from "../lib/ears";
 import { scheduleFocusPrompt } from "../lib/focus-prompt";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -4852,11 +4854,77 @@ const Composer = memo(function Composer({
   const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Dictation (the mic): words land in the box as you speak; nothing is sent until you press send.
+  const [dictating, setDictating] = useState(false);
+  const dictationEars = useRef<Ears | null>(null);
+  const dictationIdle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const runErrorRef = useRef<HTMLDivElement>(null);
   const presentedRunErrorIdRef = useRef<string | null>(null);
   const mentionListboxId = useId();
   const dragDepth = useRef(0);
   const [draggingFiles, setDraggingFiles] = useState(false);
+  function stopDictation() {
+    clearTimeout(dictationIdle.current);
+    dictationEars.current?.stop();
+    dictationEars.current = null;
+    dictation.stop("cancel");
+    setDictating(false);
+  }
+
+  async function toggleDictation() {
+    if (dictating) {
+      stopDictation();
+      textareaRef.current?.focus();
+      return;
+    }
+    let base = draft ? `${draft.replace(/\s+$/, "")} ` : "";
+    const idle = () => {
+      clearTimeout(dictationIdle.current);
+      dictationIdle.current = setTimeout(stopDictation, 10_000); // stops after 10 s of silence
+    };
+    const keep = (text: string) => {
+      if (!text || FILLER.test(text)) return;
+      base = `${base}${text} `;
+      setDraft(base);
+    };
+    setDictating(true);
+    idle();
+    const ears = new Ears();
+    dictationEars.current = ears;
+    const ok = await ears.start(
+      (event) => {
+        if (dictationEars.current !== ears) return;
+        if (event.type === "start" || event.type === "partial") idle();
+        if (event.type === "partial" && event.text) setDraft(base + event.text);
+        else if (event.type === "final") keep(event.text);
+      },
+      () => {
+        if (dictationEars.current === ears) stopDictation();
+      },
+    );
+    if (dictationEars.current !== ears) {
+      ears.stop();
+      return;
+    }
+    if (ok) return;
+    // No self-hosted ears: fall back to the browser's own speech recognition.
+    dictationEars.current = null;
+    try {
+      await dictation.listen({
+        mode: "endpoint",
+        transcribe: false,
+        onFinal: (text) => {
+          keep(text);
+          stopDictation();
+        },
+      });
+    } catch {
+      stopDictation();
+    }
+  }
+
+  useEffect(() => () => stopDictation(), []);
+
   const canSend =
     draft.trim().length > 0 ||
     selectedSkill !== null ||
@@ -5402,17 +5470,43 @@ const Composer = memo(function Composer({
             className="max-h-32 min-h-[24px] min-w-[8rem] flex-1 resize-none overflow-y-auto bg-transparent py-0.5 text-[15.5px] leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-40"
           />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={dictating ? t`Stop dictating` : t`Dictate`}
+          title={dictating ? t`Stop dictating` : t`Dictate`}
+          aria-pressed={dictating}
+          disabled={disabled}
+          onClick={() => void toggleDictation()}
+          className={`rounded-full ${
+            dictating
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "text-foreground/75"
+          }`}
+        >
+          <Mic size={16} strokeWidth={1.8} />
+        </Button>
         {onVoice ? (
           <Button
             variant="outline"
             size="icon"
-            aria-label={t`Voice`}
-            title={t`Voice`}
+            aria-label={t`Voice mode`}
+            title={t`Voice mode`}
             disabled={disabled}
-            onClick={onVoice}
+            onClick={() => {
+              stopDictation();
+              onVoice();
+            }}
             className="rounded-full text-foreground/75"
           >
-            <Mic size={16} strokeWidth={1.8} />
+            {/* The RTL Command Center's voice-mode mark: five bars of a sound wave. */}
+            <svg viewBox="0 0 24 24" fill="currentColor" width={16} height={16} aria-hidden="true">
+              <rect x="3" y="9" width="2.4" height="6" rx="1.2" />
+              <rect x="7.4" y="5" width="2.4" height="14" rx="1.2" />
+              <rect x="11.8" y="8" width="2.4" height="8" rx="1.2" />
+              <rect x="16.2" y="3" width="2.4" height="18" rx="1.2" />
+              <rect x="20.6" y="10" width="2.4" height="4" rx="1.2" />
+            </svg>
           </Button>
         ) : null}
         {running ? (

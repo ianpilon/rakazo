@@ -3934,3 +3934,15 @@ msgstr "End call"
 #: src/pages/shell/bot-panel.tsx
 msgid "Can archive or delete your other bots (asks you each time)"
 msgstr "Can archive or delete your other bots (asks you each time)"
+
+#: src/pages/Shell.tsx
+msgid "Dictate"
+msgstr "Dictate"
+
+#: src/pages/Shell.tsx
+msgid "Stop dictating"
+msgstr "Stop dictating"
+
+#: src/pages/Shell.tsx
+msgid "Voice mode"
+msgstr "Voice mode"
