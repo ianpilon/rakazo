@@ -65,6 +65,8 @@ export function CallView({
   const [voice, setVoice] = useState(voiceId);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const outAnalyser = useRef<AnalyserNode | null>(null);
+  // On a phone, an open mic puts playback on the call volume, which the page cannot change.
+  const [coarsePointer] = useState(() => window.matchMedia("(pointer: coarse)").matches);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
   const askPromptRef = useRef(t`Say yes or no, or answer in a sentence.`);
@@ -470,6 +472,11 @@ export function CallView({
           {ignored ? t`(background, ignored)` : ""}
         </p>
         {error ? <p className="text-center text-[13px] text-destructive">{error}</p> : null}
+        {coarsePointer ? (
+          <p className="text-center text-[12px] text-muted-foreground">
+            <Trans>Use your volume buttons to adjust call volume</Trans>
+          </p>
+        ) : null}
       </div>
       <p className="mb-3 text-center text-[12px] text-muted-foreground">
         {earsOn ? (

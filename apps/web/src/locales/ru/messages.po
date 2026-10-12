@@ -3946,3 +3946,7 @@ msgstr "Stop dictating"
 #: src/pages/Shell.tsx
 msgid "Voice mode"
 msgstr "Voice mode"
+
+#: src/pages/CallView.tsx
+msgid "Use your volume buttons to adjust call volume"
+msgstr "Use your volume buttons to adjust call volume"

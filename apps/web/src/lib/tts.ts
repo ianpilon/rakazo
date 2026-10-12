@@ -39,6 +39,7 @@ export class Speaker {
   /** Set from voice status: the provider streams speech (see /api/voice/speak-stream). */
   stream = false;
   private ownContext: AudioContext | null = null;
+  private loudness = new WeakMap<AudioContext, AudioNode>();
 
   subscribe(fn: (s: SpeechSnapshot) => void): () => void {
     this.watchers.add(fn);
@@ -194,6 +195,7 @@ export class Speaker {
     };
     const ac = out.context;
     void ac.resume().catch(() => {});
+    const input = this.loudnessInput(ac, out.destination);
     const sources: AudioBufferSourceNode[] = [];
     const timers: ReturnType<typeof setTimeout>[] = [];
     let next = 0;
@@ -265,7 +267,7 @@ export class Speaker {
         buffer.copyToChannel(floats, 0);
         const source = ac.createBufferSource();
         source.buffer = buffer;
-        source.connect(out.destination);
+        source.connect(input);
         // A short lead before the first chunk, then each chunk right after the previous one.
         const at = Math.max(next, ac.currentTime + (next ? 0.02 : 0.15));
         source.start(at);
@@ -294,6 +296,27 @@ export class Speaker {
     }
     timers.push(setTimeout(() => done(true), Math.max(0, (next - ac.currentTime) * 1000) + 50));
     return finished;
+  }
+
+  /**
+   * Self-hosted voices come out around -25 dBFS, well under normal media (about -16), which on a
+   * phone in call mode is barely audible. Lift them about 9 dB, with a limiter so peaks never clip.
+   */
+  private loudnessInput(context: AudioContext, destination: AudioNode): AudioNode {
+    const existing = this.loudness.get(context);
+    if (existing) return existing;
+    const boost = context.createGain();
+    boost.gain.value = 2.8;
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -9;
+    limiter.knee.value = 3;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.15;
+    boost.connect(limiter);
+    limiter.connect(destination);
+    this.loudness.set(context, boost);
+    return boost;
   }
 
   private async prepare(
