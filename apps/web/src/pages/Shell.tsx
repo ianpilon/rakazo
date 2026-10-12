@@ -3388,6 +3388,7 @@ export function ShellPage() {
         ) : (
           <Transcript
             key={activeSnapshot?.threadId}
+            followLatest={callOpen}
             scrollRef={messageScroll}
             artifactTarget={transcriptArtifactTarget}
             messages={transcriptMessages}
@@ -4501,6 +4502,7 @@ const Transcript = memo(function Transcript({
   voiceReady,
   speakingMessageId,
   onSpeak,
+  followLatest = false,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
   artifactTarget: ArtifactTarget;
@@ -4525,6 +4527,8 @@ const Transcript = memo(function Transcript({
   voiceReady: boolean;
   speakingMessageId: string | null;
   onSpeak: (message: ThreadMessage) => void;
+  /** During a voice call: always keep the newest message in view, even after the panel narrows the chat. */
+  followLatest?: boolean;
 }) {
   const { t } = useLingui();
   const [atEnd, setAtEnd] = useState(true);
@@ -4574,8 +4578,19 @@ const Transcript = memo(function Transcript({
   }, [scrollRef]);
 
   useLayoutEffect(() => {
-    if (following.current) snapToEnd();
-  }, [messages, running, snapToEnd]);
+    if (following.current || followLatest) snapToEnd();
+  }, [messages, running, snapToEnd, followLatest]);
+
+  useEffect(() => {
+    if (!followLatest) return;
+    const element = scrollRef.current;
+    if (!element) return;
+    // Reflow (the call panel opening, a reply growing) would otherwise leave the newest line below the fold.
+    const observer = new ResizeObserver(() => snapToEnd());
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    return () => observer.disconnect();
+  }, [followLatest, scrollRef, snapToEnd]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;
