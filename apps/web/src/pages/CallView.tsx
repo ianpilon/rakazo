@@ -336,11 +336,13 @@ export function CallView({
     analyser.fftSize = 1024;
     analyser.connect(context.destination);
     outAnalyser.current = analyser;
+    speaker.output = { context, destination: analyser };
     speaker.audioTap = (audio) => {
       void context.resume().catch(() => {});
       context.createMediaElementSource(audio).connect(analyser);
     };
     return () => {
+      speaker.output = null;
       speaker.audioTap = null;
       outAnalyser.current = null;
       void context.close().catch(() => {});

@@ -34,6 +34,11 @@ export class Speaker {
   private request: AbortController | null = null;
   /** The call panel taps each clip it plays, to draw the voice wave. */
   audioTap: ((audio: HTMLAudioElement) => void) | null = null;
+  /** Where streamed speech plays; the call panel routes it through its wave analyser. */
+  output: { context: AudioContext; destination: AudioNode } | null = null;
+  /** null until the first try; false when the voice provider cannot stream. */
+  private streaming: boolean | null = null;
+  private ownContext: AudioContext | null = null;
 
   subscribe(fn: (s: SpeechSnapshot) => void): () => void {
     this.watchers.add(fn);
@@ -106,6 +111,29 @@ export class Speaker {
       return;
     }
 
+    if (this.streaming !== false) {
+      try {
+        const streamed = await this.speakStreamed(
+          utterances,
+          opts,
+          controller.signal,
+          spaceId,
+          live,
+        );
+        if (streamed !== null) {
+          if (live()) this.set(IDLE);
+          if (this.request === controller) this.request = null;
+          return;
+        }
+      } catch (error) {
+        if (live()) {
+          this.set({ ...IDLE, error: error instanceof Error ? error.message : String(error) });
+        }
+        if (this.request === controller) this.request = null;
+        return;
+      }
+    }
+
     type Rendered = { blob: Blob; error?: never } | { blob?: never; error: unknown };
     const render = (utterance: string): Promise<Rendered> =>
       this.render(utterance, opts, controller.signal, spaceId).then(
@@ -145,6 +173,128 @@ export class Speaker {
     }
     if (live()) this.set(IDLE);
     if (this.request === controller) this.request = null;
+  }
+
+  /**
+   * Plays each sentence as its audio streams in (16-bit mono PCM), back to back with no gaps,
+   * so the first words are heard well before the clip is finished. Returns null when the voice
+   * provider does not stream, so the caller falls back to whole clips.
+   */
+  private async speakStreamed(
+    utterances: string[],
+    opts: SpeakOptions,
+    signal: AbortSignal,
+    spaceId: string | null,
+    live: () => boolean,
+  ): Promise<boolean | null> {
+    if (!this.output && !this.ownContext) this.ownContext = new AudioContext();
+    const out = this.output ?? {
+      context: this.ownContext as AudioContext,
+      destination: (this.ownContext as AudioContext).destination,
+    };
+    const ac = out.context;
+    void ac.resume().catch(() => {});
+    const sources: AudioBufferSourceNode[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let next = 0;
+    let settled = false;
+    let resolveFinished: (ok: boolean) => void = () => {};
+    const finished = new Promise<boolean>((resolve) => {
+      resolveFinished = resolve;
+    });
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      for (const source of sources) {
+        try {
+          source.stop();
+        } catch {
+          // already ended
+        }
+      }
+      for (const timer of timers) clearTimeout(timer);
+      if (this.settlePlayback === done) this.settlePlayback = null;
+      resolveFinished(ok);
+    };
+    this.settlePlayback = done;
+
+    for (let i = 0; i < utterances.length; i += 1) {
+      const res = await fetch("/api/voice/speak-stream", {
+        method: "POST",
+        headers: withSpaceHeaders({ "content-type": "application/json" }, spaceId),
+        credentials: "include",
+        body: JSON.stringify({ text: utterances[i], voiceId: opts.voiceId, botId: opts.botId }),
+        signal,
+      });
+      if (i === 0 && res.status === 404) {
+        this.streaming = false;
+        done(false);
+        return null;
+      }
+      if (!res.ok || !res.body) {
+        const body = await readVoiceError(res, signal);
+        done(false);
+        throw new Error(body.error ?? `the voice service returned ${res.status}`);
+      }
+      this.streaming = true;
+      const rate = Number(res.headers.get("x-sample-rate")) || 24000;
+      const reader = res.body.getReader();
+      let carry: Uint8Array | null = null;
+      let first = true;
+      for (;;) {
+        const { done: end, value } = await reader.read();
+        if (end) break;
+        if (!live() || settled) {
+          void reader.cancel().catch(() => {});
+          done(false);
+          return false;
+        }
+        let bytes = value;
+        if (carry) {
+          const merged = new Uint8Array(carry.length + value.length);
+          merged.set(carry);
+          merged.set(value, carry.length);
+          bytes = merged;
+        }
+        const samples = bytes.length >> 1;
+        carry = bytes.length & 1 ? bytes.slice(samples * 2) : null;
+        if (!samples) continue;
+        const pcm = new Int16Array(bytes.slice(0, samples * 2).buffer);
+        const floats = new Float32Array(samples);
+        for (let k = 0; k < samples; k += 1) floats[k] = (pcm[k] ?? 0) / 32768;
+        const buffer = ac.createBuffer(1, samples, rate);
+        buffer.copyToChannel(floats, 0);
+        const source = ac.createBufferSource();
+        source.buffer = buffer;
+        source.connect(out.destination);
+        // A short lead before the first chunk, then each chunk right after the previous one.
+        const at = Math.max(next, ac.currentTime + (next ? 0.02 : 0.15));
+        source.start(at);
+        next = at + buffer.duration;
+        sources.push(source);
+        if (first) {
+          first = false;
+          const caption = utterances[i];
+          timers.push(
+            setTimeout(
+              () => {
+                if (live() && !settled) {
+                  this.set({
+                    status: "speaking",
+                    botId: opts.botId,
+                    messageId: opts.messageId,
+                    caption,
+                  });
+                }
+              },
+              Math.max(0, (at - ac.currentTime) * 1000),
+            ),
+          );
+        }
+      }
+    }
+    timers.push(setTimeout(() => done(true), Math.max(0, (next - ac.currentTime) * 1000) + 50));
+    return finished;
   }
 
   private async prepare(

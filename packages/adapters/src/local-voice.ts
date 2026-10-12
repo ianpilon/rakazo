@@ -85,4 +85,21 @@ export class LocalVoiceProvider implements VoiceProvider {
     await requireOk(res, "Your voice server", "speaking");
     return { bytes: await readVoiceAudio(res, signal), mimeType: "audio/wav" };
   }
+
+  async synthesizeStream(
+    request: VoiceSynthesizeRequest,
+    context: AdapterContext,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; sampleRate: number }> {
+    const res = await fetch(`${baseUrl()}/audio/speech`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ voice: request.voiceId, input: request.text, stream: true }),
+      signal: voiceDeadline(request.signal ?? context.signal, 60_000),
+    });
+    await requireOk(res, "Your voice server", "speaking");
+    if (!res.body || !(res.headers.get("content-type") ?? "").includes("octet-stream")) {
+      throw new Error("Your voice server did not stream audio.");
+    }
+    return { stream: res.body, sampleRate: Number(res.headers.get("x-sample-rate")) || 24000 };
+  }
 }

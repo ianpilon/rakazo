@@ -311,6 +311,11 @@ export interface VoiceProvider {
   listVoices(apiKey: string, context: AdapterContext): Promise<VoiceInfo[]>;
   synthesize(request: VoiceSynthesizeRequest, context: AdapterContext): Promise<SpeechClip>;
   transcribe?(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;
+  /** Raw 16-bit mono PCM as it is generated, so playback can start before the clip is done. */
+  synthesizeStream?(
+    request: VoiceSynthesizeRequest,
+    context: AdapterContext,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; sampleRate: number }>;
 }
 
 /**

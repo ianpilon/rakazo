@@ -234,6 +234,26 @@ export async function synthesizeVoice(
   );
 }
 
+/** Streams speech when the provider can; null when it cannot (the caller uses /speak). */
+export async function synthesizeVoiceStream(
+  deps: VoiceDeps,
+  actor: Actor,
+  input: { text: string; voiceId?: string; botId?: string; signal?: AbortSignal },
+) {
+  const target = await resolveVoiceTarget(deps, actor, input);
+  const text = input.text.trim();
+  if (!text) throw new ORPCError("BAD_REQUEST", { message: "Nothing to speak." });
+  if (text.length > MAX_SPEAK_CHARS) {
+    throw new ORPCError("BAD_REQUEST", { message: "That utterance is too long to speak." });
+  }
+  const provider = createVoiceProvider(target.cred.provider);
+  if (!provider.synthesizeStream) return null;
+  return provider.synthesizeStream(
+    { text, voiceId: target.voiceId, apiKey: target.apiKey, signal: input.signal },
+    voiceContext(actor, input.signal),
+  );
+}
+
 export async function transcribeVoice(
   deps: VoiceDeps,
   actor: Actor,
@@ -288,6 +308,36 @@ export function mountVoiceHttpRoutes(
       return new Response(new Uint8Array(clip.bytes), {
         headers: {
           "content-type": clip.mimeType,
+          "cache-control": "no-store",
+        },
+      });
+    } catch (error) {
+      return voiceHttpError(c, error);
+    }
+  });
+
+  app.post("/api/voice/speak-stream", async (c) => {
+    const actor = await authenticate(c);
+    if (!actor) return c.json({ error: "Unauthorized" }, 401);
+    const raw = await readBoundedBody(c.req.raw, MAX_SPEAK_REQUEST_BYTES);
+    if (raw === null) return c.json({ error: "Request body is too large." }, 413);
+    const body = parseVoiceRequestBody(raw);
+    try {
+      const streamed = await synthesizeVoiceStream(deps, actor, {
+        text: String((body as { text?: unknown }).text ?? ""),
+        voiceId: optionalString((body as { voiceId?: unknown }).voiceId),
+        botId: optionalString((body as { botId?: unknown }).botId),
+        signal: AbortSignal.any(
+          [c.req.raw.signal, AbortSignal.timeout(SPEAK_TIMEOUT_MS)].filter(
+            Boolean,
+          ) as AbortSignal[],
+        ),
+      });
+      if (!streamed) return c.json({ error: "This voice provider does not stream." }, 404);
+      return new Response(streamed.stream, {
+        headers: {
+          "content-type": "application/octet-stream",
+          "x-sample-rate": String(streamed.sampleRate),
           "cache-control": "no-store",
         },
       });
