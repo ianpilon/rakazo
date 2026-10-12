@@ -466,6 +466,9 @@ export function ShellPage() {
   const memoryProviderConfigRevision = useRef(0);
   const [callOpen, setCallOpen] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  useEffect(() => {
+    speaker.stream = Boolean(voiceStatus?.stream);
+  }, [voiceStatus]);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [dismissedRunErrorIds, setDismissedRunErrorIds] =
     useState<ReadonlySet<string>>(readSeenRunErrorIds);

@@ -3939,3 +3939,7 @@ msgstr "Mute"
 #: src/pages/CallView.tsx
 msgid "End call"
 msgstr "End call"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Can archive or delete your other bots (asks you each time)"
+msgstr "Can archive or delete your other bots (asks you each time)"

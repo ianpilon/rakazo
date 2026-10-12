@@ -36,7 +36,8 @@ const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
   "cloud_agent_reply",
   "cloud_agent_cancel",
 ]);
-const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set(["create_space"]);
+// Removing a bot always waits for the owner's own yes: never auto-reviewed, never "always allow".
+const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set(["create_space", "archive_bot", "delete_bot"]);
 
 const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "browser_snapshot",

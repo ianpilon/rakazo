@@ -16,6 +16,31 @@ export const DELEGATION_TOOL_NAMES = new Set([
   "message_bot",
 ]);
 
+const BOT_TARGET_SCHEMA = {
+  type: "object",
+  properties: {
+    confirm_name: { type: "string", description: "Exact current name of the bot." },
+    bot_id: { type: "string", description: "Optional bot id, needed when two bots share a name." },
+  },
+  required: ["confirm_name"],
+};
+
+/** Tools for an admin bot (manageBotsAllowed): it manages all of the owner's bots, with approval. */
+export const manageBotsTools: ConnectorTool[] = [
+  {
+    name: "archive_bot",
+    description:
+      "Archive one of the user's bots (not yourself). Archiving stops its work and routines and hides it, keeping its conversation, memory, and files so the user can restore it. The user approves each archive. confirm_name must exactly match its name.",
+    inputSchema: BOT_TARGET_SCHEMA,
+  },
+  {
+    name: "delete_bot",
+    description:
+      "Permanently delete one of the user's bots (not yourself), with its conversation, routines, and files. This cannot be undone; prefer archive_bot unless the user says delete. The user approves each delete. confirm_name must exactly match its name.",
+    inputSchema: BOT_TARGET_SCHEMA,
+  },
+];
+
 export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "computer_observe",

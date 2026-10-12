@@ -36,8 +36,8 @@ export class Speaker {
   audioTap: ((audio: HTMLAudioElement) => void) | null = null;
   /** Where streamed speech plays; the call panel routes it through its wave analyser. */
   output: { context: AudioContext; destination: AudioNode } | null = null;
-  /** null until the first try; false when the voice provider cannot stream. */
-  private streaming: boolean | null = null;
+  /** Set from voice status: the provider streams speech (see /api/voice/speak-stream). */
+  stream = false;
   private ownContext: AudioContext | null = null;
 
   subscribe(fn: (s: SpeechSnapshot) => void): () => void {
@@ -111,7 +111,7 @@ export class Speaker {
       return;
     }
 
-    if (this.streaming !== false) {
+    if (this.stream) {
       try {
         const streamed = await this.speakStreamed(
           utterances,
@@ -227,7 +227,7 @@ export class Speaker {
         signal,
       });
       if (i === 0 && res.status === 404) {
-        this.streaming = false;
+        this.stream = false;
         done(false);
         return null;
       }
@@ -236,7 +236,6 @@ export class Speaker {
         done(false);
         throw new Error(body.error ?? `the voice service returned ${res.status}`);
       }
-      this.streaming = true;
       const rate = Number(res.headers.get("x-sample-rate")) || 24000;
       const reader = res.body.getReader();
       let carry: Uint8Array | null = null;

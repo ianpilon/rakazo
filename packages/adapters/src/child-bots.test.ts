@@ -11,6 +11,7 @@ import {
   archiveBot,
   archiveSpawnedBot,
   confirmSpawnedBotName,
+  deleteManagedBot,
   destroyBot,
   spawnBot,
 } from "./child-bots.js";
@@ -691,5 +692,74 @@ describe("archiveBot", () => {
       where: { id: "computer-1", state: "running", providerRef: "provider-1" },
       data: { state: "stopped" },
     });
+  });
+});
+
+describe("admin bot (manageBotsAllowed)", () => {
+  const lifecycle = (bots: Array<{ id: string; name: string }>) => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue(
+        bots.map((bot) => ({ ...bot, spaceId: "workspace-1", userId: "user-1", archivedAt: null })),
+      );
+    return {
+      findMany,
+      deps: {
+        prisma: { bot: { findMany } } as unknown as PrismaClient,
+        sandbox: {} as SandboxProvider,
+        home: {} as AgentHomeStore,
+        jobs: {} as JobPublisher,
+      },
+    };
+  };
+
+  it("finds the delete target by name, so a wrong id cannot redirect it", async () => {
+    const { deps } = lifecycle([
+      { id: "chief", name: "Chief" },
+      { id: "digest", name: "Weekly Research Digest" },
+    ]);
+    // The model names Chief (itself) but passes another bot's id: the name wins and it refuses.
+    const result = await deleteManagedBot(
+      deps,
+      {
+        managerBotId: "chief",
+        userId: "user-1",
+        spaceId: "workspace-1",
+        confirmName: "Chief",
+        botId: "digest",
+      },
+      context,
+    );
+    expect(result).toEqual({ error: "A bot cannot delete itself." });
+  });
+
+  it("refuses an unknown name", async () => {
+    const { deps } = lifecycle([{ id: "chief", name: "Chief" }]);
+    const result = await deleteManagedBot(
+      deps,
+      { managerBotId: "chief", userId: "user-1", spaceId: "workspace-1", confirmName: "Ghost" },
+      context,
+    );
+    expect(result).toEqual({ error: 'No bot named "Ghost". Refusing to delete.' });
+  });
+
+  it("archives among all of the owner's active bots, not only its own children", async () => {
+    const { deps, findMany } = lifecycle([{ id: "chief", name: "Chief" }]);
+    const result = await archiveSpawnedBot(
+      deps,
+      {
+        spawnedByBotId: "chief",
+        manageAll: true,
+        userId: "user-1",
+        spaceId: "workspace-1",
+        confirmName: "Ghost",
+        botId: "chief",
+      },
+      context,
+    );
+    expect(findMany).toHaveBeenCalledWith({
+      where: { archivedAt: null, userId: "user-1", spaceId: "workspace-1" },
+    });
+    expect(result).toEqual({ error: 'No bot named "Ghost". Refusing to archive.' });
   });
 });

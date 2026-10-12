@@ -16,6 +16,9 @@ export type EarsEvent =
 /** Short acknowledgements that should not cut a spoken reply off. */
 export const BACKCHANNEL = /^(mm+|mhm|uh[- ]?huh|uh|um|hmm+|ok(ay)?|yeah|yes|right|sure)[.!]?$/i;
 
+/** Pure filler sounds: never sent as a message (unlike "yes" or "okay", which can answer a question). */
+export const FILLER = /^(m+|mm+|mhm|hmm+|uh+|um+|er+|ah+|uh[- ]?huh)[.!?,]?$/i;
+
 export class Ears {
   private ws: WebSocket | null = null;
   private context: AudioContext | null = null;

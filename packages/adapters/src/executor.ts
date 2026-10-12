@@ -156,10 +156,11 @@ import {
 import {
   agentConnectionTools,
   builtinAgentTools,
+  manageBotsTools,
   teamLineGrantTools,
   teamLineTools,
 } from "./builtin-tools.js";
-import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
+import { archiveSpawnedBot, deleteManagedBot, spawnBot } from "./child-bots.js";
 import { type CloudAgentConnection, cloudAgentsEnabled } from "./cloud-agent-factory.js";
 import { executeCloudAgentTool } from "./cloud-agent-service.js";
 import { validCloudAgentArgs } from "./cloud-agent-tools.js";
@@ -1420,7 +1421,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ...(hasMessagingIdentity ? agentConnectionTools : []),
           ...(hasMessagingIdentity ? teamLineTools : []),
           ...(bot.smsGrantAllowed ? teamLineGrantTools : []),
-        ];
+        ].flatMap((tool) =>
+          // An admin bot's archive/delete reach all of the owner's bots, described as such.
+          bot.manageBotsAllowed && tool.name === "archive_bot" ? [] : [tool],
+        );
+        if (bot.manageBotsAllowed) builtins.push(...manageBotsTools);
         const exposedConnectorTools = discovered.filter(
           (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
         );
@@ -3238,11 +3243,31 @@ export function createRunExecutor(deps: ExecutorDeps) {
             if ("ok" in result && result.ok) handedOff = true;
             return finish(result);
           }
+          if (name === "delete_bot" && bot.manageBotsAllowed) {
+            const deleted = await deleteManagedBot(
+              deps,
+              {
+                managerBotId: bot.id,
+                userId: run.userId,
+                spaceId: run.spaceId,
+                confirmName: String(args.confirm_name ?? args.confirmName ?? ""),
+                botId: args.bot_id ? String(args.bot_id) : undefined,
+              },
+              context,
+            );
+            if ("error" in deleted) return finish(deleted);
+            if (!(await persistEffectResult(deleted))) return uncertainEffectResult(name);
+            await publishMessage(deps, run, "bot", [
+              { kind: "child_bot", botId: deleted.botId, name: deleted.name, status: "deleted" },
+            ]).catch(() => {});
+            return finish(deleted);
+          }
           if (name === "archive_bot" || name === "delete_bot") {
             const archived = await archiveSpawnedBot(
               deps,
               {
                 spawnedByBotId: bot.id,
+                manageAll: bot.manageBotsAllowed,
                 userId: run.userId,
                 spaceId: run.spaceId,
                 confirmName: String(args.confirm_name ?? args.confirmName ?? ""),

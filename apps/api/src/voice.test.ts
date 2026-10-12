@@ -15,6 +15,7 @@ describe("toVoiceStatus", () => {
       configured: true,
       ready: false,
       transcribe: true,
+      stream: false,
       provider: "elevenlabs",
       voiceId: "",
     });
@@ -25,11 +26,19 @@ describe("toVoiceStatus", () => {
     expect(toVoiceStatus({ provider: "cartesia", voiceId: "katie" }).transcribe).toBe(false);
   });
 
+  it("streams only for providers that can", () => {
+    process.env.RAKAZO_LOCAL_VOICE_URL = "http://127.0.0.1:8118/v1";
+    expect(toVoiceStatus({ provider: "local", voiceId: "ann" }).stream).toBe(true);
+    expect(toVoiceStatus({ provider: "elevenlabs", voiceId: "x" }).stream).toBe(false);
+    delete process.env.RAKAZO_LOCAL_VOICE_URL;
+  });
+
   it("is off when nothing is connected", () => {
     expect(toVoiceStatus(null)).toEqual({
       configured: false,
       ready: false,
       transcribe: false,
+      stream: false,
       provider: null,
       voiceId: "",
     });

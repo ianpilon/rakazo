@@ -1067,6 +1067,7 @@ export function createRouter(deps: RouterDeps) {
             autoSpeak: input.autoSpeak,
             smsSendAllowed: input.smsSendAllowed,
             smsGrantAllowed: input.smsGrantAllowed,
+            manageBotsAllowed: input.manageBotsAllowed,
             ...(input.modelProvider !== undefined
               ? { modelProvider: input.modelProvider, modelId: input.modelId ?? null }
               : {}),

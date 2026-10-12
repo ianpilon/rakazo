@@ -343,6 +343,8 @@ model Bot {
   smsSendAllowed    Boolean           @default(false)
   /// May turn smsSendAllowed on or off for the owner's other bots (a manager bot).
   smsGrantAllowed   Boolean           @default(false)
+  /// May archive or permanently delete the owner's other bots (an admin bot), each time with the owner's approval.
+  manageBotsAllowed Boolean           @default(false)
   parent            Bot?              @relation("BotChildren", fields: [parentBotId], references: [id], onDelete: SetNull)
   children          Bot[]             @relation("BotChildren")
   createdAt         DateTime          @default(now())

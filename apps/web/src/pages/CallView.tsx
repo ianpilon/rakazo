@@ -4,7 +4,7 @@ import { isSecretAskBlock, narrateTool, speechFromBlocks, spokenDecision } from 
 import { Mic, MicOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { dictation } from "../lib/dictation";
-import { BACKCHANNEL, Ears, type EarsEvent } from "../lib/ears";
+import { BACKCHANNEL, Ears, type EarsEvent, FILLER } from "../lib/ears";
 import { rpc } from "../lib/rpc";
 import { speaker } from "../lib/tts";
 
@@ -200,7 +200,7 @@ export function CallView({
         setHeard("");
         return;
       }
-      if (speaking && BACKCHANNEL.test(event.text)) return;
+      if (FILLER.test(event.text) || (speaking && BACKCHANNEL.test(event.text))) return;
       speaker.stop();
       void handleTranscript(event.text);
     }

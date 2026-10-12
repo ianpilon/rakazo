@@ -57,9 +57,18 @@ export function toVoiceStatus(cred: { provider: string; voiceId: string } | null
     configured: Boolean(cred),
     ready: Boolean(cred?.voiceId),
     transcribe: Boolean(entry?.transcribe && cred),
+    stream: Boolean(cred && providerStreams(cred.provider)),
     provider: cred?.provider ?? null,
     voiceId: cred?.voiceId ?? "",
   };
+}
+
+function providerStreams(provider: string): boolean {
+  try {
+    return typeof createVoiceProvider(provider).synthesizeStream === "function";
+  } catch {
+    return false;
+  }
 }
 
 export function toVoiceCredential(row: {

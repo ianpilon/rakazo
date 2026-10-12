@@ -217,6 +217,8 @@ export async function archiveSpawnedBot(
     spaceId: string;
     confirmName: string;
     botId?: string;
+    /** An admin bot (manageBotsAllowed) may archive any of the owner's bots, not only its own. */
+    manageAll?: boolean;
   },
   context: AdapterContext,
 ) {
@@ -227,15 +229,25 @@ export async function archiveSpawnedBot(
 
   const spawned = await deps.prisma.bot.findMany({
     where: {
-      parentBotId: input.spawnedByBotId,
+      ...(input.manageAll ? { archivedAt: null } : { parentBotId: input.spawnedByBotId }),
       userId: input.userId,
       spaceId: input.spaceId,
     },
   });
-  const matches = input.botId
-    ? spawned.filter((bot) => bot.id === input.botId)
-    : spawned.filter((bot) => bot.name === confirmName);
+  // An admin bot finds its target by exact name; an id only picks between bots that share it,
+  // so a mistaken id from the model can never point the action at a different bot.
+  const named = spawned.filter((bot) => bot.name === confirmName);
+  const matches = input.manageAll
+    ? named.length > 1 && input.botId
+      ? named.filter((bot) => bot.id === input.botId)
+      : named
+    : input.botId
+      ? spawned.filter((bot) => bot.id === input.botId)
+      : named;
 
+  if (input.manageAll && matches.length === 0) {
+    return { error: `No bot named "${confirmName}". Refusing to archive.` };
+  }
   if (input.botId && matches.length === 0) {
     return { error: "That bot was not created by this bot. Refusing to archive." };
   }
@@ -256,6 +268,39 @@ export async function archiveSpawnedBot(
   }
 
   await archiveBot(deps, target, context);
+  return { ok: true as const, botId: target.id, name: target.name };
+}
+
+/** An admin bot permanently deletes one of the owner's bots (never itself). */
+export async function deleteManagedBot(
+  deps: BotLifecycleDeps,
+  input: {
+    managerBotId: string;
+    userId: string;
+    spaceId: string;
+    confirmName: string;
+    botId?: string;
+  },
+  context: AdapterContext,
+) {
+  const confirmName = input.confirmName.trim();
+  if (!confirmName) return { error: "confirm_name is required. Refusing to delete." };
+  const bots = await deps.prisma.bot.findMany({
+    where: { userId: input.userId, spaceId: input.spaceId },
+  });
+  // By exact name; an id only picks between bots that share it (a mistaken id cannot redirect it).
+  const named = bots.filter((bot) => bot.name === confirmName);
+  const matches =
+    named.length > 1 && input.botId ? named.filter((bot) => bot.id === input.botId) : named;
+  if (matches.length === 0) return { error: `No bot named "${confirmName}". Refusing to delete.` };
+  if (matches.length > 1) {
+    return { error: `More than one bot is named "${confirmName}". Pass bot_id as well.` };
+  }
+  const target = matches[0]!;
+  const confirmed = confirmSpawnedBotName(confirmName, target.name);
+  if (!confirmed.ok) return confirmed;
+  if (target.id === input.managerBotId) return { error: "A bot cannot delete itself." };
+  await destroyBot(deps, target, context, { deleteMemories: false });
   return { ok: true as const, botId: target.id, name: target.name };
 }
 

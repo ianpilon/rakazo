@@ -209,6 +209,7 @@ export function BotSettings({
     autoSpeak?: boolean;
     smsSendAllowed?: boolean;
     smsGrantAllowed?: boolean;
+    manageBotsAllowed?: boolean;
     voiceId?: string | null;
     modelProvider?: string | null;
     modelId?: string | null;
@@ -229,6 +230,7 @@ export function BotSettings({
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
   const [smsSendAllowed, setSmsSendAllowed] = useState(bot.smsSendAllowed);
   const [smsGrantAllowed, setSmsGrantAllowed] = useState(bot.smsGrantAllowed);
+  const [manageBotsAllowed, setManageBotsAllowed] = useState(bot.manageBotsAllowed);
   const [voiceId, setVoiceId] = useState(bot.voiceId ?? "");
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [modelKey, setModelKey] = useState(
@@ -503,6 +505,17 @@ export function BotSettings({
           />
           <Trans>Can let other bots send texts</Trans>
         </label>
+        <label
+          htmlFor={`${ids}-manage-bots`}
+          className="mt-3 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
+        >
+          <Switch
+            id={`${ids}-manage-bots`}
+            checked={manageBotsAllowed}
+            onCheckedChange={(checked) => setManageBotsAllowed(checked)}
+          />
+          <Trans>Can archive or delete your other bots (asks you each time)</Trans>
+        </label>
         {voices.length ? (
           <label htmlFor={`${ids}-voice`} className={fieldLabelClass}>
             <Trans>Voice</Trans>
@@ -547,6 +560,7 @@ export function BotSettings({
               autoSpeak,
               smsSendAllowed,
               smsGrantAllowed,
+              manageBotsAllowed,
               voiceId: voiceId || null,
               modelProvider: selected?.provider ?? null,
               modelId: selected?.modelId ?? null,

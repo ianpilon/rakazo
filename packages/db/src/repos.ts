@@ -52,6 +52,7 @@ function mapBot(
     autoSpeak?: boolean;
     smsSendAllowed?: boolean;
     smsGrantAllowed?: boolean;
+    manageBotsAllowed?: boolean;
     modelProvider?: string | null;
     modelId?: string | null;
     thinkingLevel?: string | null;
@@ -91,6 +92,7 @@ function mapBot(
     autoSpeak: bot.autoSpeak ?? false,
     smsSendAllowed: bot.smsSendAllowed ?? false,
     smsGrantAllowed: bot.smsGrantAllowed ?? false,
+    manageBotsAllowed: bot.manageBotsAllowed ?? false,
     modelProvider: bot.modelProvider ?? null,
     modelId: bot.modelId ?? null,
     thinkingLevel: (bot.thinkingLevel as Bot["thinkingLevel"]) ?? null,

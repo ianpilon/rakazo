@@ -66,6 +66,7 @@ export const BotSchema = z.object({
   smsSendAllowed: z.boolean(),
   /** May grant or revoke texting for the owner's other bots. */
   smsGrantAllowed: z.boolean(),
+  manageBotsAllowed: z.boolean(),
   modelProvider: z.string().nullable(),
   modelId: z.string().nullable(),
   thinkingLevel: ThinkingLevelSchema.nullable(),
@@ -324,6 +325,7 @@ export const UpdateBotInput = z
     autoSpeak: z.boolean().optional(),
     smsSendAllowed: z.boolean().optional(),
     smsGrantAllowed: z.boolean().optional(),
+    manageBotsAllowed: z.boolean().optional(),
     modelProvider: z.string().trim().min(1).max(80).nullable().optional(),
     modelId: z.string().trim().min(1).max(200).nullable().optional(),
     thinkingLevel: ThinkingLevelSchema.nullable().optional(),
@@ -1009,6 +1011,8 @@ export const VoiceStatusSchema = z.object({
   configured: z.boolean(),
   ready: z.boolean(),
   transcribe: z.boolean(),
+  /** The provider streams speech, so playback can start before a clip is finished. */
+  stream: z.boolean().optional(),
   provider: z.string().nullable(),
   voiceId: z.string(),
 });
