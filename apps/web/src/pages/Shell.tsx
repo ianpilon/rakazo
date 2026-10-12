@@ -2794,7 +2794,9 @@ export function ShellPage() {
                             ) : null}
                             <span className="truncate">{group.title}</span>
                           </span>
-                          {group.emptySpaceId || sectionIdFromKey(group.key) ? null : (
+                          {group.emptySpaceId ||
+                          sectionIdFromKey(group.key) ||
+                          isUnassignedKey(group.key) ? null : (
                             <ChevronDown
                               size={14}
                               strokeWidth={1.8}
@@ -2811,28 +2813,12 @@ export function ShellPage() {
                         !group.emptySpaceId ? (
                           <button
                             type="button"
-                            aria-label={t`Rename ${group.title}`}
-                            className="mr-1 rounded-md p-1 text-muted-foreground/70 transition hover:bg-sidebar-accent hover:text-foreground focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:[div:hover>&]:opacity-100"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setRenameSectionTarget({
-                                id: sectionIdFromKey(group.key) ?? UNASSIGNED_RENAME_ID,
-                                name: group.title ?? "",
-                              });
-                            }}
-                          >
-                            <Pencil size={13} aria-hidden="true" />
-                          </button>
-                        ) : null}
-                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
-                          <button
-                            type="button"
                             aria-label={t`Actions for ${group.title}`}
                             className="rounded-md p-1.5 text-muted-foreground/80 transition hover:bg-sidebar-accent hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                             onClick={(event) => {
                               const rect = event.currentTarget.getBoundingClientRect();
                               setSectionMenu({
-                                id: sectionIdFromKey(group.key)!,
+                                id: sectionIdFromKey(group.key) ?? UNASSIGNED_RENAME_ID,
                                 name: group.title ?? "",
                                 position: { x: rect.left, y: rect.bottom },
                               });
@@ -2841,7 +2827,8 @@ export function ShellPage() {
                             <MoreHorizontal size={14} aria-hidden="true" />
                           </button>
                         ) : null}
-                        {sectionIdFromKey(group.key) && !group.emptySpaceId ? (
+                        {(sectionIdFromKey(group.key) || isUnassignedKey(group.key)) &&
+                        !group.emptySpaceId ? (
                           <button
                             type="button"
                             aria-expanded={!collapsed}

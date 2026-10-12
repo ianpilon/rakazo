@@ -3736,10 +3736,6 @@ msgid "Could not rename section"
 msgstr "Could not rename section"
 
 #: src/pages/Shell.tsx
-msgid "Rename {0}"
-msgstr "Rename {0}"
-
-#: src/pages/Shell.tsx
 msgid "Actions for section"
 msgstr "Actions for section"
 
