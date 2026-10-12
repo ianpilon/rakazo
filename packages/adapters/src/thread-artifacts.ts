@@ -16,12 +16,22 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { resolveBotWorkspacePath } from "./computer-support.js";
+import {
+  countWords,
+  extractDocumentText,
+  INLINE_DOCUMENT_MAX_WORDS,
+  isReadableDocument,
+} from "./document-text.js";
 
 export type MaterializedThreadFile = {
   name: string;
   mimeType: string;
   size: number;
   path: string;
+  /** Extracted text, when the document is short enough to read in the turn. */
+  text?: string;
+  /** Word count of the extracted text (also set when it is too long to inline). */
+  words?: number;
 };
 
 export async function attachWorkspaceFileToThread(
@@ -127,20 +137,33 @@ export async function materializeCurrentTurnFiles(
       throw new Error(`Attached file exceeds the 10 MiB limit: ${row.name}`);
     }
     const relativePath = `attachments/${row.id}${attachmentExtensionForMimeType(row.mimeType)}`;
+    const absolutePath = resolveBotWorkspacePath(
+      input.computerMode,
+      input.context.botId,
+      relativePath,
+    );
     input.markWorkspaceDirty?.();
     await deps.sandbox.writeFile(
       input.computer,
-      {
-        path: resolveBotWorkspacePath(input.computerMode, input.context.botId, relativePath),
-        content: bytes,
-      },
+      { path: absolutePath, content: bytes },
       input.context,
     );
+    const text = isReadableDocument(row.mimeType)
+      ? await extractDocumentText(
+          deps,
+          input.computer,
+          { path: absolutePath, mimeType: row.mimeType, bytes },
+          input.context,
+        )
+      : null;
+    const words = text ? countWords(text) : undefined;
     materialized.push({
       name: row.name,
       mimeType: row.mimeType,
       size: row.size,
       path: relativePath,
+      ...(words === undefined ? {} : { words }),
+      ...(text && words !== undefined && words <= INLINE_DOCUMENT_MAX_WORDS ? { text } : {}),
     });
   }
 
@@ -149,11 +172,28 @@ export async function materializeCurrentTurnFiles(
 
 export function currentTurnFilesInstruction(files: readonly MaterializedThreadFile[]): string {
   if (!files.length) return "";
-  return [
+  const lines = [
     "Current-turn attached files are available on your computer. Inspect them before answering:",
     ...files.map(
       (file) =>
         `- ${JSON.stringify(file.name)} (${file.mimeType}, ${file.size} bytes): ${JSON.stringify(file.path)}`,
     ),
-  ].join("\n");
+  ];
+  for (const file of files) {
+    if (file.text) {
+      lines.push(
+        "",
+        `Full text of ${JSON.stringify(file.name)} (${file.words} words), already extracted for you, with page markers. Answer from this text; do not open or convert the file again, and do not say it is too large:`,
+        "<<<DOCUMENT",
+        file.text,
+        "DOCUMENT>>>",
+      );
+    } else if (file.words !== undefined) {
+      lines.push(
+        "",
+        `${JSON.stringify(file.name)} is ${file.words} words, too long to read in one turn. Break it down in stages with the shell command: digest ${JSON.stringify(file.path)} --name ${JSON.stringify(file.name)}. It writes a digest to shared/digests/ and prints the path; read that file, then answer.`,
+      );
+    }
+  }
+  return lines.join("\n");
 }

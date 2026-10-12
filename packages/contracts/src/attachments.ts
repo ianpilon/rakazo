@@ -18,6 +18,7 @@ export const ATTACHMENT_FILE_MIME_TYPES = [
   "text/markdown",
   "text/csv",
   "application/json",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
 export const ATTACHMENT_ALLOWED_MIME_TYPES = [

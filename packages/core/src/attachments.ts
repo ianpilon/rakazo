@@ -126,6 +126,7 @@ const EXTENSION_MIME_TYPES: Record<string, AttachmentMimeType> = {
   ".markdown": "text/markdown",
   ".csv": "text/csv",
   ".json": "application/json",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
 const MIME_TYPE_EXTENSIONS: Record<AttachmentMimeType, string> = {
@@ -138,6 +139,7 @@ const MIME_TYPE_EXTENSIONS: Record<AttachmentMimeType, string> = {
   "text/markdown": ".md",
   "text/csv": ".csv",
   "application/json": ".json",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
 };
 
 export function inferAttachmentMimeType(
